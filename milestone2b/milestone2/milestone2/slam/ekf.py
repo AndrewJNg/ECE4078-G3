@@ -90,7 +90,10 @@ class EKF:
         F = self.state_transition(raw_drive_meas)
         x = self.get_state_vector()
 
+        ##############################################################################
         # TODO: add your codes here to compute the predicted x
+        self.P= F@self.P@F.T + x
+        ##############################################################################
 
     # the update step of EKF
     def update(self, measurements):
@@ -114,7 +117,17 @@ class EKF:
 
         x = self.get_state_vector()
 
+        ############################################################
         # TODO: add your codes here to compute the updated x
+        P = self.P
+        K = P @ H.T @ np.linalg.inv (H@P@H.T + R)
+
+        corrected_x = x + K@(z-z_hat)
+        self.set_state_vector(corrected_x)
+
+        corrected_P = (np.eye(P.shape[0]) - K@H) @P
+        self.P = corrected_P
+        ############################################################
 
 
     def state_transition(self, raw_drive_meas):

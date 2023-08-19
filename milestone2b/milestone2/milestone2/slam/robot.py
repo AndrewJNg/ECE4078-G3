@@ -78,6 +78,15 @@ class Robot:
         
         # TODO: add your codes here to compute DFx using lin_vel, ang_vel, dt, and th
 
+        # DFx[0,2] = -dt * lin_vel *np.sin(th) 
+        # DFx[1,2] = dt* lin_vel * np.cos(th)   
+        if (ang_vel==0):
+            DFx[0,2] = lin_vel * (-np.cos(th)) + np.cos(th) #dx/dth
+            DFx[1,2] = lin_vel * (-np.sin(th)) + np.sin(th) #dx/dth 
+       
+        else:
+            DFx[0,2] = lin_vel/ang_vel * (-np.cos(th)) + np.cos(th) #dx/dth
+            DFx[1,2] = lin_vel/ang_vel * (-np.sin(th)) + np.sin(th) #dx/dth 
         return DFx
 
     def derivative_measure(self, markers, idx_list):
@@ -124,7 +133,18 @@ class Robot:
         # Derivative of x,y,theta w.r.t. lin_vel, ang_vel
         Jac2 = np.zeros((3,2))
         
+        ##############################################################################
         # TODO: add your codes here to compute Jac2 using lin_vel, ang_vel, dt, th, and th2
+        # Jac2[0,0] = np.cos(th2) - np.cos(th)
+        # Jac2[1,0] = np.sin(th2) - np.sin(th2) 
+        # Jac2[2,1] = dt
+        Jac2[0,0] = 1/ang_vel * (-np.sin(th) + np.sin(th2)) #dx/d_lin_vel
+        Jac2[0,1] = lin_vel * (-np.sin(th) + np.sin(th2)) #dx/dw
+        Jac2[1,0] = 1/ang_vel * (np.cos(th) - np.cos(th2)) #dy/d_lin_vel
+        Jac2[1,0] = lin_vel * (np.cos(th) - np.cos(th2)) #dy/dw
+        Jac2[2,0] = 0 #dw/d_lin_vel
+        Jac2[2,1] = dt #dw/d_w
+        ##############################################################################
 
         # Derivative of x,y,theta w.r.t. left_speed, right_speed
         Jac = Jac2 @ Jac1
