@@ -92,7 +92,10 @@ class EKF:
 
         ##############################################################################
         # TODO: add your codes here to compute the predicted x
-        # self.P= F@self.P@F.T + x
+
+        # self.robot.drive(raw_drive_meas)
+        # self.P= F@self.P@F.T + self.predict_covariance(raw_drive_meas)
+
         F = self.state_transition(raw_drive_meas)
         x = self.get_state_vector()
         
@@ -132,6 +135,9 @@ class EKF:
 
         ############################################################
         # TODO: add your codes here to compute the updated x
+        # K = self.P
+
+
         S = H @ self.P @ H.T + R
         K = self.P @ H.T @ np.linalg.inv(S)
         
@@ -146,6 +152,7 @@ class EKF:
         # Update state and covariance
         self.set_state_vector(x_upd)
         self.P = P_upd
+        ############################################################
         
         # P = self.P
         # K = P @ H.T @ np.linalg.inv (H@P@H.T + R)
