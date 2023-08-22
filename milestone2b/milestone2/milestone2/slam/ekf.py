@@ -92,7 +92,20 @@ class EKF:
 
         ##############################################################################
         # TODO: add your codes here to compute the predicted x
-        self.P= F@self.P@F.T + x
+        # self.P= F@self.P@F.T + x
+        F = self.state_transition(raw_drive_meas)
+        x = self.get_state_vector()
+        
+        # Predicted state
+        x_pred = F @ x
+        
+        # Predicted covariance
+        Q = self.predict_covariance(raw_drive_meas)
+        P_pred = F @ self.P @ F.T + Q
+        
+        # Update state and covariance
+        self.set_state_vector(x_pred)
+        self.P = P_pred
         ##############################################################################
 
     # the update step of EKF
@@ -119,14 +132,29 @@ class EKF:
 
         ############################################################
         # TODO: add your codes here to compute the updated x
-        P = self.P
-        K = P @ H.T @ np.linalg.inv (H@P@H.T + R)
+        S = H @ self.P @ H.T + R
+        K = self.P @ H.T @ np.linalg.inv(S)
+        
+        # Update state
+        y = z - z_hat
+        x_upd = x + K @ y
+        
+        # Update covariance
+        I = np.eye(self.P.shape[0])
+        P_upd = (I - K @ H) @ self.P
+        
+        # Update state and covariance
+        self.set_state_vector(x_upd)
+        self.P = P_upd
+        
+        # P = self.P
+        # K = P @ H.T @ np.linalg.inv (H@P@H.T + R)
 
-        corrected_x = x + K@(z-z_hat)
-        self.set_state_vector(corrected_x)
+        # corrected_x = x + K@(z-z_hat)
+        # self.set_state_vector(corrected_x)
 
-        corrected_P = (np.eye(P.shape[0]) - K@H) @P
-        self.P = corrected_P
+        # corrected_P = (np.eye(P.shape[0]) - K@H) @P
+        # self.P = corrected_P
         ############################################################
 
 

@@ -13,8 +13,11 @@ class aruco_detector:
 
         self.marker_length = marker_length
         self.aruco_params = cv2.aruco.DetectorParameters_create()
+        # self.aruco_params = cv2.aruco.DetectorParameters()
+
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_100)
-    
+        #  self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_100)
+   
     def detect_marker_positions(self, img):
         # Perform detection
         corners, ids, rejected = cv2.aruco.detectMarkers(
