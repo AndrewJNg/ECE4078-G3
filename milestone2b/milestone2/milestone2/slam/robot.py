@@ -76,17 +76,28 @@ class Robot:
         dt = drive_meas.dt
         th = self.state[2]
 
+        ################################################################################################
         # TODO: add your codes here to compute DFx using lin_vel, ang_vel, dt, and th
 
         # DFx[0,2] = -dt * lin_vel *np.sin(th) 
         # DFx[1,2] = dt* lin_vel * np.cos(th)   
+        # if (ang_vel==0):
+        #     DFx[0,2] = lin_vel * (-np.cos(th)) + np.cos(th) #dx/dth
+        #     DFx[1,2] = lin_vel * (-np.sin(th)) + np.sin(th) #dx/dth 
+       
+        # else:
+        #     DFx[0,2] = lin_vel/ang_vel * (-np.cos(th)) + np.cos(th) #dx/dth
+        #     DFx[1,2] = lin_vel/ang_vel * (-np.sin(th)) + np.sin(th) #dx/dth
+        
         if (ang_vel==0):
-            DFx[0,2] = lin_vel * (-np.cos(th)) + np.cos(th) #dx/dth
-            DFx[1,2] = lin_vel * (-np.sin(th)) + np.sin(th) #dx/dth 
+            DFx[0,2] = -lin_vel * np.sin(th)*dt #dx/dth
+            DFx[1,2] = lin_vel * np.cos(th)*dt #dx/dth 
        
         else:
-            DFx[0,2] = lin_vel/ang_vel * (-np.cos(th)) + np.cos(th) #dx/dth
-            DFx[1,2] = lin_vel/ang_vel * (-np.sin(th)) + np.sin(th) #dx/dth 
+            DFx[0,2] = lin_vel/ang_vel * (-np.cos(th) + np.cos(th+dt*ang_vel)) #dx/dth
+            DFx[1,2] = lin_vel/ang_vel * (-np.sin(th) + np.sin(th+dt*ang_vel)) #dx/dth
+         
+        ################################################################################################
         return DFx
 
 
@@ -134,35 +145,51 @@ class Robot:
         # Derivative of x,y,theta w.r.t. lin_vel, ang_vel
         Jac2 = np.zeros((3,2))
         
-        ################
+        ################################################################################################
         # TODO: add your codes here to compute Jac2 using lin_vel, ang_vel, dt, th, and th2
         # Jac2[0,0] = np.cos(th2) - np.cos(th)
         # Jac2[1,0] = np.sin(th2) - np.sin(th2) 
         # Jac2[2,1] = dt
-        
-        if (ang_vel==0):
-            Jac2[0,0] = np.cos(th)*dt
-            Jac2[0,1] = 0
-            Jac2[1,0] = np.sin(th)*dt
-            Jac2[1,1] = 0
-            Jac2[2,0] = 0 
-            Jac2[2,1] = 0
-
+        if ang_vel == 0:
+            Jac2[0,0] = dt*np.cos(th)
+            Jac2[1,0] = dt*np.sin(th)
         else:
-            Jac2[0,0] = 1/ang_vel * (-np.sin(th) + np.sin(th2)) #dx/d_lin_vel
-            Jac2[0,1] = -lin_vel * (-np.sin(th) + np.sin(th2)) #dx/dw
-            Jac2[1,0] = 1/ang_vel * (np.cos(th) - np.cos(th2)) #dy/d_lin_vel
-            Jac2[1,0] = -lin_vel * (np.cos(th) - np.cos(th2)) #dy/dw
-            Jac2[2,0] = 0 #dw/d_lin_vel
-            Jac2[2,1] = dt #dw/d_w
+            Jac2[0,0] = 1/ang_vel * (np.sin(th2) - np.sin(th))
+            Jac2[0,1] = -lin_vel/(ang_vel**2) * (np.sin(th2) - np.sin(th)) + \
+                lin_vel / ang_vel * (dt * np.cos(th2))
 
+            Jac2[1,0] = -1/ang_vel * (np.cos(th2) - np.cos(th))
+            Jac2[1,1] = lin_vel/(ang_vel**2) * (np.cos(th2) - np.cos(th)) + \
+							-lin_vel / ang_vel * (-dt * np.sin(th2))
+            Jac2[2,1] = dt
+        # if (ang_vel==0):
+        #     Jac2[0,0] = np.cos(th)*dt
+        #     # Jac2[0,1] = 0
+        #     Jac2[1,0] = np.sin(th)*dt
+        #     # Jac2[1,1] = 0
+        #     # Jac2[2,0] = 0 
+        #     # Jac2[2,1] = 0
 
-            # Jac2[0,0] = 1/ang_vel * (-np.sin(th) + np.sin(th2)) #dx/d_lin_vel
-            # Jac2[0,1] = pow(-lin_vel * (-np.sin(th) + np.sin(th2)),-2) #dx/dw
-            # Jac2[1,0] = 1/ang_vel * (np.cos(th) - np.cos(th2)) #dy/d_lin_vel
-            # Jac2[1,0] = pow(-lin_vel * (np.cos(th) - np.cos(th2)),-2) #dy/dw
-            # Jac2[2,0] = 0 #dw/d_lin_vel
-            # Jac2[2,1] = dt #dw/d_w
+        # else:
+            
+        #     # Jac2[0,0] = 1/ang_vel * (-np.sin(th) + np.sin(th2)) #dx/d_lin_vel
+        #     # Jac2[0,1] = (-lin_vel/(ang_vel**2)) * (-np.sin(th) + np.sin(th2)) #dx/dw
+            
+        #     # Jac2[1,0] = 1/ang_vel * (np.cos(th) - np.cos(th2)) #dy/d_lin_vel
+        #     # Jac2[1,1] = (-lin_vel/(ang_vel**2)) * (np.cos(th) - np.cos(th2)) #dy/dw
+
+        #     # Jac2[2,0] = 0 #dw/d_lin_vel
+        #     # Jac2[2,1] = dt #dw/d_w
+
+        #     Jac2[0,0] = 1/ang_vel * (-np.sin(th) + np.sin(th2)) #dx/d_lin_vel
+        #     Jac2[0,1] = (-lin_vel/(ang_vel**2) )* (-np.sin(th) + np.sin(th2)) + (lin_vel / ang_vel) * (dt * np.cos(th2))  #dx/dw
+            
+        #     Jac2[1,0] = -1/ang_vel * (np.cos(th2) - np.cos(th)) #dy/d_lin_vel
+        #     Jac2[1,1] = (lin_vel/(ang_vel**2) )* (-np.cos(th) + np.cos(th2)) - (lin_vel/ang_vel) * (-dt*np.sin(th2)) #dy/dw
+
+        #     # Jac2[2,0] = 0 #dw/d_lin_vel
+        #     Jac2[2,1] = dt #dw/d_w
+
         ##############################################################################
 
         # Derivative of x,y,theta w.r.t. left_speed, right_speed

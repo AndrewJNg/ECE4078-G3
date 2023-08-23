@@ -92,23 +92,27 @@ class EKF:
 
         ##############################################################################
         # TODO: add your codes here to compute the predicted x
+        F = self.state_transition(raw_drive_meas)
+        self.robot.drive(raw_drive_meas)
+        self.P = F @ self.P @ np.transpose(F) + self.predict_covariance(raw_drive_meas)
+
 
         # self.robot.drive(raw_drive_meas)
         # self.P= F@self.P@F.T + self.predict_covariance(raw_drive_meas)
 
-        F = self.state_transition(raw_drive_meas)
-        x = self.get_state_vector()
+        # F = self.state_transition(raw_drive_meas)
+        # x = self.get_state_vector()
         
-        # Predicted state
-        x_pred = F @ x
+        # # Predicted state
+        # x_pred = F @ x
         
-        # Predicted covariance
-        Q = self.predict_covariance(raw_drive_meas)
-        P_pred = F @ self.P @ F.T + Q
+        # # Predicted covariance
+        # Q = self.predict_covariance(raw_drive_meas)
+        # P_pred = F @ self.P @ F.T + Q
         
-        # Update state and covariance
-        self.set_state_vector(x_pred)
-        self.P = P_pred
+        # # Update state and covariance
+        # self.set_state_vector(x_pred)
+        # self.P = P_pred
         ##############################################################################
 
     # the update step of EKF
@@ -135,23 +139,28 @@ class EKF:
 
         ############################################################
         # TODO: add your codes here to compute the updated x
-        # K = self.P
+        K = self.P @ np.transpose(H) @ np.linalg.inv(H @ self.P @ np.transpose(H) + R)
+        x = x + K @ (z - z_hat)
+        self.P = (np.eye(len(self.P)) - K @ H) @ self.P
+        self.set_state_vector(x)
 
 
-        S = H @ self.P @ H.T + R
-        K = self.P @ H.T @ np.linalg.inv(S)
+        ############################################################
+
+        # S = H @ self.P @ H.T + R
+        # K = self.P @ H.T @ np.linalg.inv(S)
         
-        # Update state
-        y = z - z_hat
-        x_upd = x + K @ y
+        # # Update state
+        # y = z - z_hat
+        # x_upd = x + K @ y
         
-        # Update covariance
-        I = np.eye(self.P.shape[0])
-        P_upd = (I - K @ H) @ self.P
+        # # Update covariance
+        # I = np.eye(self.P.shape[0])
+        # P_upd = (I - K @ H) @ self.P
         
-        # Update state and covariance
-        self.set_state_vector(x_upd)
-        self.P = P_upd
+        # # Update state and covariance
+        # self.set_state_vector(x_upd)
+        # self.P = P_upd
         ############################################################
         
         # P = self.P
