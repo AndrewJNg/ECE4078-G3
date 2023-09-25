@@ -3,4 +3,5 @@
 *.png
 *.gif
 *.hdf5
-**/model.pth
+*.pth
+# **/model.pth
