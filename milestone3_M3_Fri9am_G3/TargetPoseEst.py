@@ -150,87 +150,102 @@ def merge_estimations(target_map):
     #     capsicum_est = ([np.sum(capsicum_est,axis=0)/len(capsicum_est)])
     ###############################################################################################
     #  mean
-    # if len(redapple_est) > num_per_target:
-    #     redapple_est = np.mean(redapple_est)
+    if len(redapple_est) > num_per_target:
+        redapple_est = [np.mean(redapple_est, axis=0)]
 
-    # if len(greenapple_est) > num_per_target:
-    #     greenapple_est = np.mean(greenapple_est)
+    if len(greenapple_est) > num_per_target:
+        greenapple_est = [np.mean(greenapple_est, axis=0)]
 
-    # if len(orange_est) > num_per_target:
-    #     orange_est = np.mean(orange_est)
+    if len(orange_est) > num_per_target:
+        orange_est = [np.mean(orange_est, axis=0)]
 
-    # if len(mango_est) > num_per_target:
-    #     mango_est = np.mean(mango_est)
+    if len(mango_est) > num_per_target:
+        mango_est = [np.mean(mango_est, axis=0)]
 
-    # if len(capsicum_est) > num_per_target:
-    #     capsicum_est = np.mean(capsicum_est)
+    if len(capsicum_est) > num_per_target:
+        print(capsicum_est)
+        capsicum_est = [np.mean(capsicum_est, axis=0)]
+        print(capsicum_est)
     ###############################################################################################
     #  Interquartile range (IQR)
     # https://www.askpython.com/python/examples/how-to-determine-outliers#:~:text=If%20the%20value%2Fdata%20point,will%20be%20considered%20an%20outlier.&text=We%20import%20numpy%20module%20for,threshold%20to%201.5%20times%20iqr%20.
-    if len(redapple_est) > num_per_target:
-        data = redapple_est
+    # if len(redapple_est) > num_per_target:
+    #     data = redapple_est
 
-        q1 = np.percentile(data, 25)
-        q3 = np.percentile(data, 75)
-        iqr = q3 - q1   
-        lower_fence = q1 - 1.5 * iqr
-        upper_fence = q3 + 1.5 * iqr
-        # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
-        valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+    #     q1 = np.percentile(data, 25)
+    #     q3 = np.percentile(data, 75)
+    #     iqr = q3 - q1   
+    #     lower_fence = q1 - 1.5 * iqr
+    #     upper_fence = q3 + 1.5 * iqr
+    #     # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
+    #     valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
 
-        redapple_est = np.mean(valid_val) # only get the average of valid values
+    #     redapple_est = [np.mean(valid_val, axis=0)] # only get the average of valid values
 
-    if len(greenapple_est) > num_per_target:
-        data = greenapple_est
+    # if len(greenapple_est) > num_per_target:
+    #     data = greenapple_est
 
-        q1 = np.percentile(data, 25)
-        q3 = np.percentile(data, 75)
-        iqr = q3 - q1   
-        lower_fence = q1 - 1.5 * iqr
-        upper_fence = q3 + 1.5 * iqr
-        # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
-        valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+    #     q1 = np.percentile(data, 25)
+    #     q3 = np.percentile(data, 75)
+    #     iqr = q3 - q1   
+    #     lower_fence = q1 - 1.5 * iqr
+    #     upper_fence = q3 + 1.5 * iqr
+    #     # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
+    #     valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
 
-        greenapple_est = np.mean(valid_val) # only get the average of valid values
+    #     greenapple_est = [np.mean(valid_val, axis=0)] # only get the average of valid values
 
-    if len(orange_est) > num_per_target:
-        data = orange_est
+    # if len(orange_est) > num_per_target:
+    #     data = orange_est
 
-        q1 = np.percentile(data, 25)
-        q3 = np.percentile(data, 75)
-        iqr = q3 - q1   
-        lower_fence = q1 - 1.5 * iqr
-        upper_fence = q3 + 1.5 * iqr
-        # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
-        valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+    #     q1 = np.percentile(data, 25)
+    #     q3 = np.percentile(data, 75)
+    #     iqr = q3 - q1   
+    #     lower_fence = q1 - 1.5 * iqr
+    #     upper_fence = q3 + 1.5 * iqr
+    #     # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
+    #     valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
 
-        orange_est = np.mean(valid_val) # only get the average of valid values
+    #     orange_est = [np.mean(valid_val, axis=0)] # only get the average of valid values
 
-    if len(mango_est) > num_per_target:
-        data = mango_est
+    # if len(mango_est) > num_per_target:
+    #     data = mango_est
 
-        q1 = np.percentile(data, 25)
-        q3 = np.percentile(data, 75)
-        iqr = q3 - q1   
-        lower_fence = q1 - 1.5 * iqr
-        upper_fence = q3 + 1.5 * iqr
-        # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
-        valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+    #     q1 = np.percentile(data, 25)
+    #     q3 = np.percentile(data, 75)
+    #     iqr = q3 - q1   
+    #     lower_fence = q1 - 1.5 * iqr
+    #     upper_fence = q3 + 1.5 * iqr
+    #     # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
+    #     valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+    #     mango_est = [np.mean(valid_val, axis=0)] # only get the average of valid values
 
-        mango_est = np.mean(valid_val) # only get the average of valid values
+    # if len(capsicum_est) > num_per_target:
+    #     data = np.array(capsicum_est)
+    #     # print(capsicum_est)
+    #     # print()
 
-    if len(capsicum_est) > num_per_target:
-        data = capsicum_est
 
-        q1 = np.percentile(data, 25)
-        q3 = np.percentile(data, 75)
-        iqr = q3 - q1   
-        lower_fence = q1 - 1.5 * iqr
-        upper_fence = q3 + 1.5 * iqr
-        # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
-        valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+    #     print(data[:,0])
+    #     print()
 
-        capsicum_est = np.mean(valid_val) # only get the average of valid values
+    #     q1 = np.percentile(data, 25)
+    #     q3 = np.percentile(data, 75)
+    #     iqr = q3 - q1   
+    #     lower_fence = q1 - 1.5 * iqr
+    #     upper_fence = q3 + 1.5 * iqr
+    #     outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
+    #     valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+
+    #     print(valid_val)
+    #     print()
+    #     # print(outliers)
+    #     print(data[valid_val])
+    #     capsicum_est = [np.mean(data[valid_val], axis=0)] # only get the average of valid values
+        
+    #     print()
+    #     print(capsicum_est)
+    #     # capsicum_est = ([np.sum(valid_val,axis=0)/len(valid_val)])
     ###############################################################################################
 
     

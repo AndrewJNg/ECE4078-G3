@@ -95,14 +95,6 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         
         target_pose_dict[target_list[target_num-1]] = target_pose
 
-        ######################
-        # x = box[0]*np.cos(robot_pose[2]) - box[1]*np.sin(robot_pose[2]) + robot_pose[0]
-        # y = box[0]*np.sin(robot_pose[2]) + box[1]*np.cos(robot_pose[2]) + robot_pose[1]
-        # target_pose = {'x': x, 'y': y}
-        
-        # target_pose_dict[target_list[target_num-1]] = target_pose
-
-        ###########################################
         # print(target_pose_dict)
     return target_pose_dict
 
@@ -131,20 +123,26 @@ def merge_estimations(target_map):
     # Replace it with a better merge solution.
 
     # check to see if the count is more than 1, if it is, get the average coordinate  
+    
+    ###############################################################################################
+    #  mean
     if len(redapple_est) > num_per_target:
-        redapple_est = ([np.sum(redapple_est,axis=0)/len(redapple_est)])
+        redapple_est = [np.mean(redapple_est, axis=0)]
 
     if len(greenapple_est) > num_per_target:
-        greenapple_est = ([np.sum(greenapple_est,axis=0)/len(greenapple_est)])
+        greenapple_est = [np.mean(greenapple_est, axis=0)]
 
     if len(orange_est) > num_per_target:
-        orange_est = ([np.sum(orange_est,axis=0)/len(orange_est)])
+        orange_est = [np.mean(orange_est, axis=0)]
 
     if len(mango_est) > num_per_target:
-        mango_est = ([np.sum(mango_est,axis=0)/len(mango_est)])
+        mango_est = [np.mean(mango_est, axis=0)]
 
     if len(capsicum_est) > num_per_target:
-        capsicum_est = ([np.sum(capsicum_est,axis=0)/len(capsicum_est)])
+        print(capsicum_est)
+        capsicum_est = [np.mean(capsicum_est, axis=0)]
+        print(capsicum_est)
+    ###############################################################################################
 
 
     for i in range(num_per_target):
