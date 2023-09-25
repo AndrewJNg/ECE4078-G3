@@ -131,20 +131,110 @@ def merge_estimations(target_map):
     # Replace it with a better merge solution.
 
     # check to see if the count is more than 1, if it is, get the average coordinate  
+    ###############################################################################################
+    #  original
+    # if len(redapple_est) > num_per_target:
+    #     redapple_est = ([np.sum(redapple_est,axis=0)/len(redapple_est)])
+    #     mean = np.mean(redapple_est)
+
+    # if len(greenapple_est) > num_per_target:
+    #     greenapple_est = ([np.sum(greenapple_est,axis=0)/len(greenapple_est)])
+
+    # if len(orange_est) > num_per_target:
+    #     orange_est = ([np.sum(orange_est,axis=0)/len(orange_est)])
+
+    # if len(mango_est) > num_per_target:
+    #     mango_est = ([np.sum(mango_est,axis=0)/len(mango_est)])
+
+    # if len(capsicum_est) > num_per_target:
+    #     capsicum_est = ([np.sum(capsicum_est,axis=0)/len(capsicum_est)])
+    ###############################################################################################
+    #  mean
+    # if len(redapple_est) > num_per_target:
+    #     redapple_est = np.mean(redapple_est)
+
+    # if len(greenapple_est) > num_per_target:
+    #     greenapple_est = np.mean(greenapple_est)
+
+    # if len(orange_est) > num_per_target:
+    #     orange_est = np.mean(orange_est)
+
+    # if len(mango_est) > num_per_target:
+    #     mango_est = np.mean(mango_est)
+
+    # if len(capsicum_est) > num_per_target:
+    #     capsicum_est = np.mean(capsicum_est)
+    ###############################################################################################
+    #  Interquartile range (IQR)
+    # https://www.askpython.com/python/examples/how-to-determine-outliers#:~:text=If%20the%20value%2Fdata%20point,will%20be%20considered%20an%20outlier.&text=We%20import%20numpy%20module%20for,threshold%20to%201.5%20times%20iqr%20.
     if len(redapple_est) > num_per_target:
-        redapple_est = ([np.sum(redapple_est,axis=0)/len(redapple_est)])
+        data = redapple_est
+
+        q1 = np.percentile(data, 25)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1   
+        lower_fence = q1 - 1.5 * iqr
+        upper_fence = q3 + 1.5 * iqr
+        # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
+        valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+
+        redapple_est = np.mean(valid_val) # only get the average of valid values
 
     if len(greenapple_est) > num_per_target:
-        greenapple_est = ([np.sum(greenapple_est,axis=0)/len(greenapple_est)])
+        data = greenapple_est
+
+        q1 = np.percentile(data, 25)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1   
+        lower_fence = q1 - 1.5 * iqr
+        upper_fence = q3 + 1.5 * iqr
+        # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
+        valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+
+        greenapple_est = np.mean(valid_val) # only get the average of valid values
 
     if len(orange_est) > num_per_target:
-        orange_est = ([np.sum(orange_est,axis=0)/len(orange_est)])
+        data = orange_est
+
+        q1 = np.percentile(data, 25)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1   
+        lower_fence = q1 - 1.5 * iqr
+        upper_fence = q3 + 1.5 * iqr
+        # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
+        valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+
+        orange_est = np.mean(valid_val) # only get the average of valid values
 
     if len(mango_est) > num_per_target:
-        mango_est = ([np.sum(mango_est,axis=0)/len(mango_est)])
+        data = mango_est
+
+        q1 = np.percentile(data, 25)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1   
+        lower_fence = q1 - 1.5 * iqr
+        upper_fence = q3 + 1.5 * iqr
+        # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
+        valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+
+        mango_est = np.mean(valid_val) # only get the average of valid values
 
     if len(capsicum_est) > num_per_target:
-        capsicum_est = ([np.sum(capsicum_est,axis=0)/len(capsicum_est)])
+        data = capsicum_est
+
+        q1 = np.percentile(data, 25)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1   
+        lower_fence = q1 - 1.5 * iqr
+        upper_fence = q3 + 1.5 * iqr
+        # outliers = np.where((data < lower_fence) | (data > upper_fence))   # rejected values
+        valid_val = np.where((data >= lower_fence) | (data <= upper_fence))
+
+        capsicum_est = np.mean(valid_val) # only get the average of valid values
+    ###############################################################################################
+
+    
+
 
 
     for i in range(num_per_target):
