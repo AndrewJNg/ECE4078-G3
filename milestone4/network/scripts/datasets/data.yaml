@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 5
+names: ['capsicum', 'greenapple', 'mango', 'orange', 'redapple']
+
+roboflow:
+  workspace: andrewjng
+  project: ece4078-oqvae
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/andrewjng/ece4078-oqvae/dataset/2
