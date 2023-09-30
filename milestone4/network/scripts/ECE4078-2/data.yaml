@@ -1,0 +1,16 @@
+names:
+- capsicum
+- greenapple
+- mango
+- orange
+- redapple
+nc: 5
+roboflow:
+  license: CC BY 4.0
+  project: ece4078-oqvae
+  url: https://universe.roboflow.com/andrewjng/ece4078-oqvae/dataset/2
+  version: 2
+  workspace: andrewjng
+test: ../test/images
+train: ECE4078-2/train/images
+val: ECE4078-2/valid/images

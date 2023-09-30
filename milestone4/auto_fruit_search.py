@@ -20,6 +20,9 @@ sys.path.insert(0, "util")
 from pibot import Alphabot
 import measure as measure
 
+from network.scripts.detector import Detector
+import util.DatasetHandler as dh # save/load functions
+
 
 def read_true_map(fname):
     """Read the ground truth map and output the pose of the ArUco markers and 3 types of target fruit to search
@@ -153,8 +156,13 @@ def drive_to_point(waypoint, robot_pose):
     robot_to_waypoint_distance = np.hypot(waypoint[0]-robot_pose[0], waypoint[1]-robot_pose[1])
     drive_time = robot_to_waypoint_distance / (scale * wheel_vel_lin)
     print("Driving for {:.2f} seconds".format(drive_time))
-    ppi.set_velocity([1, 0], tick=wheel_vel_lin, time=drive_time)
+
+    lv,rv = ppi.set_velocity([1, 0], tick=wheel_vel_lin, time=drive_time)
     ppi.set_velocity([0, 0], turning_tick=wheel_vel_lin, time=0.2) # immediate stop with small delay
+    ####################################################
+    drive_meas = measure.Drive(lv,rv,drive_time)
+    robot_pose = get_robot_pose(drive_meas)
+    robot_pose = localize(robot_pose, waypoint)
     ####################################################
 
     print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
@@ -202,22 +210,81 @@ def drive_to_point(waypoint, robot_pose):
     '''
     
 
-def get_robot_pose(waypoint, robot_pose):
-####################################################
-## method 1: open loop position 
-    robot_pose = [0.0,0.0,0.0]
+# def get_robot_pose(waypoint, robot_pose):
+# ####################################################
+# ## method 1: open loop position 
+#     robot_pose = [0.0,0.0,0.0]
 
-    # obtain angle with respect to x-axis
-    robot_pose[2] = np.arctan2(waypoint[1]-robot_pose[1],waypoint[0]-robot_pose[0])
-    robot_pose[2] = (robot_pose[2] + 2*np.pi) if (robot_pose[2] < 0) else robot_pose[2] # limit from 0 to 360 degree
+#     # obtain angle with respect to x-axis
+#     robot_pose[2] = np.arctan2(waypoint[1]-robot_pose[1],waypoint[0]-robot_pose[0])
+#     robot_pose[2] = (robot_pose[2] + 2*np.pi) if (robot_pose[2] < 0) else robot_pose[2] # limit from 0 to 360 degree
 
-    robot_pose[0] = waypoint[0]
-    robot_pose[1] = waypoint[1]
-####################################################
-## method 2: using EKF
+#     robot_pose[0] = waypoint[0]
+#     robot_pose[1] = waypoint[1]
+# ####################################################
+# ## method 2: using EKF
 
+#     return robot_pose
+
+def localize(robot_pose, waypoint):
+    rms_error = 10
+    baseline = 11e-2
+    turn_angle = 0.45
+    wheel_vel_ang = 16
+    turn_time = turn_angle * ((baseline/2)/(scale*wheel_vel_ang))
+
+    lms = [0]
+    continue_robot = 1
+    while continue_robot:
+        lv,rv = ppi.set_velocity([0, 1], turning_tick=wheel_vel_ang, time=turn_time)
+        ppi.set_velocity([0, 0], turning_tick=wheel_vel_ang, time=0.2) # immediate stop with small delay
+        turning_drive_meas = measure.Drive(lv,rv,turn_time)
+        # robot_pose = get_robot_pose(turning_drive_meas)
+        time.sleep(0.2)
+        img = np.zeros([240, 320, 3], dtype=np.uint8)
+        img = ppi.get_image()
+        lms, _ = aruco_det.detect_marker_positions(img)
+        ekf.predict(turning_drive_meas)
+        ekf.update(lms)
+
+        detector_output, _ = d.detect_single_image(img)
+        if len(detector_output)>0:
+            print("seen fruit")
+            file_output = (detector_output, ekf)
+            pred_fname = output.write_image(file_output[0],file_output[1])
+            print("saved as: ",pred_fname)
+
+        temp_robot_pose = ekf.robot.state
+        if temp_robot_pose[2][0]<0:
+            temp_robot_pose[2][0] = temp_robot_pose[2][0] + 2*np.pi
+        if temp_robot_pose[2][0]>2*np.pi:
+            temp_robot_pose[2][0] = temp_robot_pose[2][0] - 2*np.pi
+        robot_pose = [temp_robot_pose[0][0],temp_robot_pose[1][0],temp_robot_pose[2][0]]
+
+        rms_error = np.sqrt((waypoint[0] - robot_pose[0])**2 + (waypoint[1] - robot_pose[1])**2)
+        print("\nrms_error: ",rms_error)
+        print("lms count: ",len(lms))
+        if (rms_error<=0.2):
+            continue_robot = 0
     return robot_pose
 
+
+def get_robot_pose(drive_meas):
+    # We STRONGLY RECOMMEND you to use your SLAM code from M2 here  
+    img = np.zeros([240, 320, 3], dtype=np.uint8)
+    img = ppi.get_image()
+
+    lms, _ = aruco_det.detect_marker_positions(img)
+    ekf.predict(drive_meas)
+    ekf.update(lms)
+    temp_robot_pose = ekf.robot.state
+    if temp_robot_pose[2][0]<0:
+        temp_robot_pose[2][0] = temp_robot_pose[2][0] + 2*np.pi
+    if temp_robot_pose[2][0]>2*np.pi:
+        temp_robot_pose[2][0] = temp_robot_pose[2][0] - 2*np.pi
+    robot_pose = [temp_robot_pose[0][0],temp_robot_pose[1][0],temp_robot_pose[2][0]]
+    print("Get Robot pose :",robot_pose,robot_pose[2]*180/np.pi)
+    return robot_pose
 
 ###############################################################################################################################
 """
@@ -258,6 +325,13 @@ if __name__ == "__main__":
     scale = np.loadtxt(fileS, delimiter=',')
     fileB = "calibration/param/baseline.txt"
     baseline = np.loadtxt(fileB, delimiter=',')
+    
+    args.ckpt = "network/scripts/model/yolov8_model.pt"
+    d = Detector(args.ckpt)
+    
+    file_output = None
+    output = dh.OutputWriter('lab_output')
+    pred_fname = ''
 
     # read in the true map
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
@@ -295,7 +369,6 @@ if __name__ == "__main__":
         for sub_waypoint in waypoints:
             # robot drives to the waypoint
             drive_to_point(sub_waypoint,robot_pose)
-            robot_pose = get_robot_pose(sub_waypoint, robot_pose)
 
             print("Finished driving to waypoint: {}; New robot pose: {}".format(sub_waypoint,robot_pose))
             ppi.set_velocity([0, 0])
