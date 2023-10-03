@@ -6,64 +6,62 @@ from ultralytics import YOLO
 from ultralytics.utils import ops
 
 
+# Using detector class to match previous resnet version
 class Detector:
     def __init__(self, model_path):
         self.model = YOLO(model_path)
 
         self.class_colour = {
-            'background': (220, 220, 220),
-            'red apple': (128, 0, 0),
-            'green apple': (155, 255, 70),
-            'mango': (255, 85, 0),
-            'orange': (255, 180, 0),
-            'capsicum': (0, 128, 0),
+            # class: (B,G,R) 
+            '0': (220, 220, 220),   #'background'
+            '1': (0, 0, 255),       #'red apple'
+            '2': (0, 255, 0),       #'green apple'
+            '3': (0, 128, 255),     #'orange'
+            '4': (0, 255, 255),     #'mango'
+            '5': (0, 128, 0),       #'capsicum'
         }
 
     def detect_single_image(self, img):
         """
-        function:
-            detect target(s) in an image
-        input:
-            img: image, e.g., image read by the cv2.imread() function
-        output:
-            bboxes: list of lists, box info [label,[x,y,width,height]] for all detected targets in image
+        function input:
+            img: image file given by opencv2 - cv2.imread() function
+        
+        function output:
+            boundary_boxes: list of lists, box info [label,[x,y,width,height]] for all detected targets in image
             img_out: image with bounding boxes and class labels drawn on
         """
-        bboxes = self._get_bounding_boxes(img)
-
+        boundary_boxes = self._get_bounding_boxes(img)
         img_out = deepcopy(img)
 
         # draw bounding boxes on the image
-        for bbox in bboxes:
-            #  translate bounding box info back to the format of [x1,y1,x2,y2]
-            xyxy = ops.xywh2xyxy(bbox[1])
+        for box in boundary_boxes:
+            
+            #  get bounding box to integer values (rounded values to draw on pixel)
+            xyxy = ops.xywh2xyxy(box[1])
             x1 = int(xyxy[0])
             y1 = int(xyxy[1])
             x2 = int(xyxy[2])
             y2 = int(xyxy[3])
 
             # draw bounding box
-            img_out = cv2.rectangle(img_out, (x1, y1), (x2, y2), self.class_colour[bbox[0]], thickness=2)
+            img_out = cv2.rectangle(img_out, (x1, y1), (x2, y2), self.class_colour[box[0]], thickness=3)
 
             # draw class label
-            img_out = cv2.putText(img_out, bbox[0], (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                                self.class_colour[bbox[0]], 2)
+            img_out = cv2.putText(img_out, box[0], (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                                self.class_colour[box[0]], 2)
 
-        return bboxes, img_out
+        return boundary_boxes, img_out
 
     def _get_bounding_boxes(self, cv_img):
         """
-        function:
-            get bounding box and class label of target(s) in an image as detected by YOLOv8
         input:
-            cv_img    : image, e.g., image read by the cv2.imread() function
-            model_path: str, e.g., 'yolov8n.pt', trained YOLOv8 model
+            cv_img: image file given by opencv2 - cv2.imread() function
+            model_path: trained YOLOv8 model
         output:
-            bounding_boxes: list of lists, box info [label,[x,y,width,height]] for all detected targets in image
+            bounding_boxes: return bounding box values, with format [label, [x,y,width,height] ] 
         """
 
-        # predict target type and bounding box with your trained YOLO
-
+        # predict using yolov
         predictions = self.model.predict(cv_img, imgsz=640, verbose=False)
 
         # get bounding box and class label for target(s) detected
@@ -73,28 +71,25 @@ class Detector:
             for box in boxes:
                 # bounding format in [x, y, width, height]
                 box_cord = box.xywh[0]
-
                 box_label = box.cls  # class label of the box
-
                 bounding_boxes.append([prediction.names[int(box_label)], np.asarray(box_cord.cpu())])
 
         return bounding_boxes
 
 
-# FOR TESTING ONLY
+# Test script
 if __name__ == '__main__':
     # get current script directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    yolo = Detector(f'{script_dir}/model/yolov8_model.pt')
-    # yolo = Detector('yolov8n.pt')
+    # load best model
+    yolo = Detector(f'{script_dir}/model/yolov8_model_best.pt')
 
-    img = cv2.imread(f'{script_dir}\dataset\images\image_4.png')
+    # load test image
+    img = cv2.imread(f'{script_dir}\image_0.png')
 
-    bboxes, img_out = yolo.detect_single_image(img)
+    # get prediction
+    boundary_boxes, img_out = yolo.detect_single_image(img)
 
-    print(bboxes)
-    print(len(bboxes))
-
-    cv2.imshow('yolo detect', img_out)
+    cv2.imshow('Predict', img_out)
     cv2.waitKey(0)

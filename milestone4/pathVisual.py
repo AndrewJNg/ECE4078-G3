@@ -3,7 +3,10 @@ import math
 from queue import PriorityQueue
 import json
 import numpy as np
-import time
+
+WIDTH = 640
+WIN = pygame.display.set_mode((WIDTH, WIDTH))
+pygame.display.set_caption("A* Path Finding Algorithm")
 
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
@@ -66,6 +69,9 @@ class Spot:
 	def make_path(self):
 		self.color = PURPLE
 
+	def draw(self, win):
+		pygame.draw.rect(win, self.color, (self.x, self.y, self.width, self.width))
+
 	def update_neighbors(self, grid):
 		self.neighbors = []
 		if self.row < self.total_rows - 1 and not grid[self.row + 1][self.col].is_barrier(): # DOWN
@@ -106,20 +112,19 @@ def h(p1, p2): # MODIFIED TO EUCLIDEAN DISTANCE
 	return d
 
 
-def reconstruct_path(came_from, current):
-    path = []
-    while current in came_from:
-        current = came_from[current]
-        
-        # MODIFICATION TO EXTRACT COORDINATES
-        row, col = current.get_pos()
-        x, y = grid_to_coord(row + 1, col + 1, 64)
-        path.append([x, y])
-        current.make_path()
-    return path
+def reconstruct_path(came_from, current, draw):
+	print("END\n")
+	while current in came_from:
+		current = came_from[current]
+		
+		# MODIFICATION TO EXTRACT COORDINATES
+		row,col = current.get_pos()
+		print(grid_to_coord(row+1,col+1,64))
+		current.make_path()
+		draw()
+	print("\nSTART")
 
-
-def algorithm(grid, start, end):
+def algorithm(draw, grid, start, end):
 	count = 0
 	open_set = PriorityQueue()
 	open_set.put((0, count, start))
@@ -132,14 +137,17 @@ def algorithm(grid, start, end):
 	open_set_hash = {start}
 
 	while not open_set.empty():
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				pygame.quit()
 
 		current = open_set.get()[2]
 		open_set_hash.remove(current)
 
 		if current == end:
-			path = reconstruct_path(came_from, end)
+			reconstruct_path(came_from, end, draw)
 			end.make_end()
-			return path
+			return True
 
 		for neighbor in current.neighbors:
 			temp_g_score = g_score[current] + h(neighbor.get_pos(), current.get_pos())
@@ -153,6 +161,8 @@ def algorithm(grid, start, end):
 					open_set.put((f_score[neighbor], count, neighbor))
 					open_set_hash.add(neighbor)
 					neighbor.make_open()
+
+		draw()
 
 		if current != start:
 			current.make_closed()
@@ -170,6 +180,42 @@ def make_grid(rows, width):
 			grid[i].append(spot)
 
 	return grid
+
+
+def draw_grid(win, rows, width):
+    gap = width // rows
+    for i in range(rows):
+        if (i) % 8 == 0:
+            pygame.draw.line(win, BLACK, (0, i * gap), (width, i * gap),2)
+        else:
+            pygame.draw.line(win, GREY, (0, i * gap), (width, i * gap))
+        for j in range(rows):
+            if (j) % 8 == 0:
+                pygame.draw.line(win, BLACK, (j * gap, 0), (j * gap, width),2)
+            else:
+                pygame.draw.line(win, GREY, (j * gap, 0), (j * gap, width))
+
+
+
+def draw(win, grid, rows, width):
+	win.fill(WHITE)
+
+	for row in grid:
+		for spot in row:
+			spot.draw(win)
+
+	draw_grid(win, rows, width)
+	pygame.display.update()
+
+
+def get_clicked_pos(pos, rows, width):
+	gap = width // rows
+	y, x = pos
+
+	row = y // gap
+	col = x // gap
+
+	return row, col
 
 def groundtruth_to_grid(x,y,rows): # Convert ground truth coordinate to grid
     row = (x + 1.6)*(rows/3.2)
@@ -206,129 +252,67 @@ def read_groundtruth(grid,rows):
             pass
     f.close()
 
-def add_obstacle(grid, rows, coord):
-    [row, col] = groundtruth_to_grid(coord[0], coord[1], rows)
-    try:
-        spot = grid[row][col]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row-1][col]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row][col-1]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row-1][col-1]
-        spot.make_barrier()
-    except:
-        pass
-
 def grid_to_coord(row,col,rows): # Grid to coordinate
 	x = (3.2/rows)*row - 1.6
 	y = 1.6 - (3.2/rows)*col  
 	return round(x,2),round(y,2)
-
-def read_waypoint():
-	x = []
-	y = []
-	f = open("waypoint.txt","r")
-	data = json.loads(f.read())
-	for i in data:
-		x.append(data[i]['x'])
-		y.append(data[i]['y'])
-	f.close()
-	return x,y
-
-def simplify_path(path, threshold):
-    # Path: list
-    # threshold: distance in (m)
-
-    new_path = []
-    for j in range(len(path)-1):
-        if j == 0:
-            new_path.append(path[j])
-        else:
-            new_path.append(path[j])
-            # Check same x coord
-            if (new_path[-1][0] == new_path[-2][0]):
-                if round(abs(new_path[-1][1] - new_path[-2][1]),2) < threshold:
-                    if path[j+1][0] == new_path[-1][0]:
-                        new_path.pop()
-            # Check same y coord
-            elif (new_path[-1][1] == new_path[-2][1]):
-                if round(abs(new_path[-1][0] - new_path[-2][0]),2) < threshold:
-                    if path[j+1][1] == new_path[-1][1]:
-                        new_path.pop()
-            # Check diagonal (same direction)
-            elif (round(path[j+1][0] - path[j][0],2) == round(path[j][0] - path[j-1][0],2) and round(path[j+1][1] - path[j][1],2) == round(path[j][1] - path[j-1][1],2)):
-                if h(new_path[-1],new_path[-2]) < threshold:
-                    new_path.pop()
-    new_path.append(path[-1])
-    
-    return new_path
-
-# START: list [x1, y1]
-# END: list [x2, y2]
-# EXTRA: nested list [[x, y], [x, y]]
-def main(START, END, EXTRA):
-    width = 640
+  
+def main(win, width):
     ROWS = 64
     grid = make_grid(ROWS, width)
 
     start = None
     end = None
-
-    read_groundtruth(grid, ROWS)
-
-    # CHECK IF ANY EXTRA FRUIT
-    if len(EXTRA) != 0:
-        for fruit in EXTRA:
-            add_obstacle(grid, ROWS, fruit)
-
-    # ADD START POINT
-    row, col = groundtruth_to_grid(START[0], START[1], ROWS)
-    if row >= ROWS:
-        row = row - 1
-    if col >= ROWS:
-        col = col - 1
-    start = grid[row][col]
-    start.make_start()
-
-    # ADD END POINT
-    row, col = groundtruth_to_grid(END[0], END[1], ROWS)
-    if row >= ROWS:
-        row = row - 1
-    if col >= ROWS:
-        col = col - 1
-    end = grid[row][col]
-    end.make_end()
-
-    for row in grid:
-        for spot in row:
-            spot.update_neighbors(grid)
-
-    path = algorithm(grid, start, end)
-
-    # Reverse path
-    path = path[::-1]
-
-    # Simplify straight path
-    # Longest segment = 0.4m
-
-    threshold = 0.4
-    path = simplify_path(path,threshold)
     
-    return path
+    read_groundtruth(grid,ROWS)
+
+    run = True
+    while run:
+        draw(win, grid, ROWS, width)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+
+            if pygame.mouse.get_pressed()[0]:  # LEFT
+                pos = pygame.mouse.get_pos()
+                row, col = get_clicked_pos(pos, ROWS, width)
+                spot = grid[row][col]
+                if not start and spot != end:
+                    start = spot
+                    start.make_start()
+
+                elif not end and spot != start:
+                    end = spot
+                    end.make_end()
+
+                #elif spot != end and spot != start:
+                    #spot.make_barrier()
+
+            elif pygame.mouse.get_pressed()[2]:  # RIGHT
+                pos = pygame.mouse.get_pos()
+                row, col = get_clicked_pos(pos, ROWS, width)
+                spot = grid[row][col]
+                spot.reset()
+                if spot == start:
+                    start = None
+                elif spot == end:
+                    end = None
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE and start and end:
+                    for row in grid:
+                        for spot in row:
+                            spot.update_neighbors(grid)
+
+                    algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
+
+                if event.key == pygame.K_c:
+                    start = None
+                    end = None
+                    grid = make_grid(ROWS, width)
+                    read_groundtruth(grid,ROWS)
+
+    pygame.quit()
 
 
-# START = [0, 0]
-# END = [1.2, 0.8]
-# EXTRA = []
-# path = main(START, END, EXTRA)
-# print(path)
+main(WIN, WIDTH)

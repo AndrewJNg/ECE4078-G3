@@ -312,7 +312,8 @@ if __name__ == "__main__":
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
-    parser.add_argument("--ckpt", default='network/scripts/model/yolov8_model.pt')
+    # parser.add_argument("--ckpt", default='network/scripts/model/yolov8_model.pt')
+    parser.add_argument("--ckpt", default="network/scripts/model/yolov8_model_best.pt")
     args, _ = parser.parse_known_args()
     
     pygame.font.init() 
