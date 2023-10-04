@@ -35,7 +35,7 @@ class Alphabot:
         try:
             r = requests.get(f"http://{self.ip}:{self.port}/camera/get")
             img = cv2.imdecode(np.frombuffer(r.content,np.uint8), cv2.IMREAD_COLOR)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         except (requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as e:
             print("Image retrieval timed out.")
             img = np.zeros((240,320,3), dtype=np.uint8)
