@@ -88,6 +88,11 @@ class EKF:
     def predict(self, raw_drive_meas):
 
         F = self.state_transition(raw_drive_meas)
+        self.robot.drive(raw_drive_meas)
+        self.P = F @ self.P @ np.transpose(F) + self.predict_covariance(raw_drive_meas)
+
+        '''
+        F = self.state_transition(raw_drive_meas)
         x = self.get_state_vector()
 
         ##############################################################################
@@ -95,7 +100,7 @@ class EKF:
         F = self.state_transition(raw_drive_meas)
         self.robot.drive(raw_drive_meas)
         self.P = F @ self.P @ np.transpose(F) + self.predict_covariance(raw_drive_meas)
-
+        '''
 
         # self.robot.drive(raw_drive_meas)
         # self.P= F@self.P@F.T + self.predict_covariance(raw_drive_meas)
@@ -143,34 +148,6 @@ class EKF:
         x = x + K @ (z - z_hat)
         self.P = (np.eye(len(self.P)) - K @ H) @ self.P
         self.set_state_vector(x)
-
-
-        ############################################################
-
-        # S = H @ self.P @ H.T + R
-        # K = self.P @ H.T @ np.linalg.inv(S)
-        
-        # # Update state
-        # y = z - z_hat
-        # x_upd = x + K @ y
-        
-        # # Update covariance
-        # I = np.eye(self.P.shape[0])
-        # P_upd = (I - K @ H) @ self.P
-        
-        # # Update state and covariance
-        # self.set_state_vector(x_upd)
-        # self.P = P_upd
-        ############################################################
-        
-        # P = self.P
-        # K = P @ H.T @ np.linalg.inv (H@P@H.T + R)
-
-        # corrected_x = x + K@(z-z_hat)
-        # self.set_state_vector(corrected_x)
-
-        # corrected_P = (np.eye(P.shape[0]) - K@H) @P
-        # self.P = corrected_P
         ############################################################
 
 

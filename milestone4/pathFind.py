@@ -81,17 +81,17 @@ class Spot:
 			self.neighbors.append(grid[self.row][self.col - 1])
 
 		# Addition of corners
-		if self.row > 0 and self.col > 0 and not grid[self.row - 1][self.col - 1].is_barrier(): # UP LEFT
-			self.neighbors.append(grid[self.row - 1][self.col - 1])
+		# if self.row > 0 and self.col > 0 and not grid[self.row - 1][self.col - 1].is_barrier(): # UP LEFT
+			# self.neighbors.append(grid[self.row - 1][self.col - 1])
 
-		if self.row > 0 and self.col < self.total_rows - 1 and not grid[self.row - 1][self.col + 1].is_barrier(): # UP RIGHT
-			self.neighbors.append(grid[self.row - 1][self.col + 1])
+		# if self.row > 0 and self.col < self.total_rows - 1 and not grid[self.row - 1][self.col + 1].is_barrier(): # UP RIGHT
+			# self.neighbors.append(grid[self.row - 1][self.col + 1])
 
-		if self.row < self.total_rows - 1 and self.col < self.total_rows - 1 and not grid[self.row + 1][self.col + 1].is_barrier(): # DOWN RIGHT
-			self.neighbors.append(grid[self.row + 1][self.col + 1])
+		# if self.row < self.total_rows - 1 and self.col < self.total_rows - 1 and not grid[self.row + 1][self.col + 1].is_barrier(): # DOWN RIGHT
+			# self.neighbors.append(grid[self.row + 1][self.col + 1])
 
-		if self.row < self.total_rows - 1 and self.col > 0 and not grid[self.row + 1][self.col - 1].is_barrier(): # DOWN LEFT
-			self.neighbors.append(grid[self.row + 1][self.col - 1])
+		# if self.row < self.total_rows - 1 and self.col > 0 and not grid[self.row + 1][self.col - 1].is_barrier(): # DOWN LEFT
+			# self.neighbors.append(grid[self.row + 1][self.col - 1])
 
 
 
@@ -102,8 +102,7 @@ class Spot:
 def h(p1, p2): # MODIFIED TO EUCLIDEAN DISTANCE
 	x1, y1 = p1
 	x2, y2 = p2
-	d = np.sqrt((y2 - y1)**2 + (x2 - x1)**2)
-	return d
+	return abs(x1 - x2) + abs(y1 - y2)
 
 
 def reconstruct_path(came_from, current):
@@ -315,8 +314,12 @@ def main(START, END, EXTRA):
 
     path = algorithm(grid, start, end)
 
+    # Add start point
+    path.append(START)
     # Reverse path
     path = path[::-1]
+    # Add end point
+    path.append(END)
 
     # Simplify straight path
     # Longest segment = 0.4m
@@ -327,8 +330,8 @@ def main(START, END, EXTRA):
     return path
 
 
-# START = [0, 0]
-# END = [1.2, 0.8]
-# EXTRA = []
-# path = main(START, END, EXTRA)
-# print(path)
+START = [0, 0]
+END = [1.2, 0.8]
+EXTRA = []
+path = main(START, END, EXTRA)
+print(path)

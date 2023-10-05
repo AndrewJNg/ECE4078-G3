@@ -234,3 +234,50 @@ def generateWaypoints():
     return waypoints
     
 
+# # Main function
+# def generateWaypoints():
+#     # Define params:
+#     start_pos = [0,0]   # start pos
+#     tolerance = 0.4     # distance when robot will take picture from fruit
+
+#     all_fruits = [[0] * 2 for i in range(5)]
+#     obstacles_arr = [[0] * 2 for i in range(10)]
+
+#     # Extracting data from ground truth file
+#     ground_truth_fname = 'M4_true_map.txt'
+#     f = open(ground_truth_fname, "r")
+#     data = json.loads(f.read())
+#     count = 0
+#     for i in data:
+#         if count > 9:
+#             all_fruits[count-10] = [data[i]['x'], data[i]['y']]
+#         else:
+#             obstacles_arr[count] = [data[i]['x'], data[i]['y']]
+#         count += 1
+#     print(all_fruits)
+#     # search_fruits = getFruitArr(all_fruits, 'search_list.txt')
+#     f.close()
+#     # print("Fruits' Location:{}".format(search_fruits))   # Debug
+
+
+#     # waypoints = getAccuratePath(tolerance, start_pos, search_fruits, obstacles_arr)
+
+#     # Code For debugging
+#     # shortest_path_str = [getFruitName(shortestPath[0]), getFruitName(shortestPath[1]), getFruitName(shortestPath[2])]
+#     # print("Shortest path:\n{}".format(shortest_path_str))  # Debug
+#     # print("\nFinal path:")
+#     # print(waypoints)
+
+#     ## To Output into file (Not Necessary Anymore)
+#     # file_output = {}
+#     # for index, path in enumerate(finalPath):
+#     #     file_output['checkpoint_' + str(index+1)] = {"x": finalPath[index][0], "y":finalPath[index][1], "theta":finalPath[index][2]}
+
+#     # with open('waypoint.txt', 'w') as f:
+#     #     json.dump(file_output, f, indent=4)
+
+#     return None
+# # return waypoints
+    
+
+# generateWaypoints()

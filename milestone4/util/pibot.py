@@ -17,8 +17,8 @@ class Alphabot:
     # turning_tick = turning speed
     ########################################## 
     def set_velocity(self, command, tick=10, turning_tick=5, time=0): 
-        l_vel = command[0]*tick - command[1]*turning_tick
-        r_vel = command[0]*tick + command[1]*turning_tick
+        l_vel = 1.05*(command[0]*tick - command[1]*turning_tick)
+        r_vel = 1*(command[0]*tick + command[1]*turning_tick)
         self.wheel_vel = [l_vel, r_vel]
         if time == 0:
             requests.get(

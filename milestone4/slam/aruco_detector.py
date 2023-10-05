@@ -49,3 +49,4 @@ class aruco_detector:
         cv2.aruco.drawDetectedMarkers(img_marked, corners, ids)
 
         return measurements, img_marked
+        # return measurements, img_marked,corners
