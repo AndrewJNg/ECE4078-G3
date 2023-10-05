@@ -9,7 +9,10 @@ import numpy as np
 
 def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
     # Define the 2D bounding box points
-    x_min, y_min, x_max, y_max = bounding_box
+    x_min, y_max,width, height = bounding_box
+    x_max = x_min - width
+    y_min = y_max - height
+    # x_min, y_min, x_max, y_max = bounding_box
 
     # Calculate the center of the bounding box
     x_center = (x_min + x_max) / 2
@@ -43,11 +46,11 @@ rotation_matrix = np.array([[r11, r12, r13],
 translation_vector = np.array([tx, ty, tz])  # Replace with your camera translation vector
 '''
 
-fileK = "calibration/param/intrinsic.txt"
-camera_matrix = np.loadtxt(fileK, delimiter=',')
-# camera_matrix = np.array([[1.07453000e+03, 0, 2.74690405e+02],
-#                            [0, 1.07258648e+03, 1.94508578e+02],
-#                            [0, 0, 1]])  # Replace with your camera intrinsic matrix
+# fileK = "calibration/param/intrinsic.txt"
+# camera_matrix = np.loadtxt(fileK, delimiter=',')
+camera_matrix = np.array([[1.07453000e+03, 0, 2.74690405e+02],
+                           [0, 1.07258648e+03, 1.94508578e+02],
+                           [0, 0, 1]])  # Replace with your camera intrinsic matrix
 
 rotation_matrix = np.array([[1, 0, 0],
                             [0, 1, 0],
@@ -55,6 +58,6 @@ rotation_matrix = np.array([[1, 0, 0],
 
 translation_vector = np.array([0, 0, 0])  # Replace with your camera translation vector
 
-bounding_box = [0,0,640,480]
+bounding_box = (117, 234, 57, 57)
 point_3d = image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector)
 print("3D Point in Camera Coordinates:", point_3d)

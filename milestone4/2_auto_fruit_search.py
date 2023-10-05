@@ -104,7 +104,30 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
                                                   np.round(fruit_true_pos[i][1], 1)))
         n_fruit += 1
 
+def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
+    # Define the 2D bounding box points
+    x_min, y_max,width, height = bounding_box
+    x_max = x_min - width
+    y_min = y_max - height
+    # x_min, y_min, x_max, y_max = bounding_box
 
+    # Calculate the center of the bounding box
+    x_center = (x_min + x_max) / 2
+    y_center = (y_min + y_max) / 2
+
+    # Create a homogeneous 2D point
+    point_2d = np.array([x_center, y_center, 1.0])
+
+    # Invert the camera matrix to get the camera's extrinsic matrix
+    inverse_camera_matrix = np.linalg.inv(camera_matrix)
+
+    # Calculate the 3D point in camera coordinates
+    point_3d_camera = np.dot(inverse_camera_matrix, point_2d)
+
+    # Apply the rotation and translation to convert to world coordinates
+    point_3d_world = np.dot(rotation_matrix, point_3d_camera) + translation_vector
+
+    return point_3d_world
 ########################################################################################################
 # Waypoint navigation
 # the robot automatically drives to a given [x,y] coordinate
@@ -159,8 +182,8 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 25):
     lv, rv = ppi.set_velocity([0, np.sign(turn_angle)], turning_tick=wheel_vel_ang, time=turn_time)
     ppi.set_velocity([0, 0], turning_tick=wheel_vel_lin, time=0.5) # stop with delay
     
-    # drive_meas = measure.Drive(lv,rv,turn_time)
-    # get_robot_pose(drive_meas)
+    drive_meas = measure.Drive(lv,rv,turn_time)
+    get_robot_pose(drive_meas)
     
     # return robot_pose
 
@@ -177,8 +200,8 @@ def robot_straight(robot_to_waypoint_distance=0,wheel_vel_lin=30,wheel_vel_ang =
     lv,rv = ppi.set_velocity([1, 0], tick=wheel_vel_lin, time=drive_time)
     ppi.set_velocity([0, 0], turning_tick=wheel_vel_lin, time=0.5) # stop with delay
 
-    # drive_meas = measure.Drive(lv,rv,drive_time)
-    # get_robot_pose(drive_meas)
+    drive_meas = measure.Drive(lv,rv,drive_time)
+    get_robot_pose(drive_meas)
 
     # return robot_pose
 
@@ -208,18 +231,17 @@ def get_robot_pose(drive_meas):
     ekf.add_landmarks(landmarks) #TODO not sure if this is needed or not
     ekf.update(landmarks) 
 
-    temp_pose = ekf.robot.state
     
-    temp_pose[2] = (temp_pose[2].tolist()[0]) % (2*np.pi) 
-    temp_pose[2] = temp_pose[2]-2*np.pi if temp_pose[2]>np.pi else temp_pose[2]
-    robot_pose = [temp_pose[0].tolist()[0],temp_pose[1].tolist()[0],temp_pose[2].tolist()[0]]
+    robot_pose = ekf.robot.state.reshape(-1)
+
+
     return robot_pose, landmarks
 
 ####################################################################################################
 def take_and_analyse_picture():
     img = ppi.get_image()
 
-    landmarks, aruco_img= aruco_det.detect_marker_positions(img)
+    landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
     # cv2.imshow('Predict',  aruco_img)
     # cv2.waitKey(0)
     # landmarks, aruco_img = aruco_det.detect_marker_positions(img)
@@ -316,6 +338,7 @@ def localize(waypoint): # turn and call get_robot_pose
         # print("rms_error: ",rms_error)
         # if (rms_error<0.2):
         #     continue_turning = 0
+        print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
     print("Finished localising")
 
     ######
@@ -429,16 +452,23 @@ def localize(waypoint):
 '''
 def estimate_position():
     img = ppi.get_image()
-    landmarks, aruco_img = aruco_det.detect_marker_positions(img)
+    landmarks, aruco_img,bounding_box = aruco_det.detect_marker_positions(img)
     robot_straight()
+    print(bounding_box)
+    
+    rotation_matrix = np.array([[1, 0, 0],
+                                [0, 1, 0],
+                                [0, 0, 1]])  # Replace with your camera rotation matrix
+
+    translation_vector = np.array([0, 0, 0])  # Replace with your camera translation vector
+    point_3d = image_to_camera_coordinates(bounding_box[0], camera_matrix, rotation_matrix, translation_vector)
+    print("3D Point in Camera Coordinates:", point_3d)
+
     # ekf.add_landmarks(landmarks) #TODO not sure if this is needed or not
     ekf.update(landmarks) 
-    temp_pose = ekf.robot.state
-    
-    temp_pose[2] = (temp_pose[2].tolist()[0]) % (2*np.pi) 
-    temp_pose[2] = temp_pose[2]-2*np.pi if temp_pose[2]>np.pi else temp_pose[2]
-    robot_pose = [temp_pose[0].tolist()[0],temp_pose[1].tolist()[0],temp_pose[2].tolist()[0]]
-    print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
+
+    robot_pose = ekf.robot.state.reshape(-1)
+    # print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
     
     cv2.imshow('Predict',  aruco_img)
     cv2.waitKey(0)
@@ -547,13 +577,13 @@ if __name__ == "__main__":
             # waypoint = sub_waypoint
             print("    ")
             print("target: "+str(sub_waypoint))
-            print("before_POSE",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
+            # print("before_POSE",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
             drive_to_point(sub_waypoint)
             print("after_POSE",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
 
-            print("localising")
-            localize(sub_waypoint)
-            print("localise done")
+            # print("localising")
+            # localize(sub_waypoint)
+            # print("localise done")
             print()
             print()
     # '''
