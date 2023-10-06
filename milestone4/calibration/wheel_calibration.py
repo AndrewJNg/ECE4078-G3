@@ -117,11 +117,13 @@ if __name__ == "__main__":
     # calibrate pibot scale and baseline
     dataDir = "{}/param/".format(os.getcwd())
 
-    print('Calibrating PiBot scale...\n')
-    scale = calibrateWheelRadius()
-    fileNameS = "{}scale.txt".format(dataDir)
-    np.savetxt(fileNameS, np.array([scale]), delimiter=',')
+    # print('Calibrating PiBot scale...\n')
+    # scale = calibrateWheelRadius()
+    # fileNameS = "{}scale.txt".format(dataDir)
+    # np.savetxt(fileNameS, np.array([scale]), delimiter=',')
 
+    fileS = "param/scale.txt"
+    scale = np.loadtxt(fileS, delimiter=',')
     print('Calibrating PiBot baseline...\n')
     baseline = calibrateBaseline(scale)
     fileNameB = "{}baseline.txt".format(dataDir)

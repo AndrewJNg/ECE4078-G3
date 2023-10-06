@@ -357,7 +357,6 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     global robot_pose
     # wheel_vel_lin = 30 # tick to move the robot
     # wheel_vel_ang = 10
-    global baseline
     if abs(turn_angle) <=1.6: # ~90deg
         baseline = 10.6e-2
 
@@ -380,8 +379,8 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     get_robot_pose(drive_meas)
 
     # visualise
-    operate.draw(canvas)
-    pygame.display.update()
+    # operate.draw(canvas)
+    # pygame.display.update()
     
     # return robot_pose
     return None
@@ -403,8 +402,8 @@ def robot_straight(robot_to_waypoint_distance=0,wheel_vel_lin=30,wheel_vel_ang =
     get_robot_pose(drive_meas)
 
     # visualise
-    operate.draw(canvas)
-    pygame.display.update()
+    # operate.draw(canvas)
+    # pygame.display.update()
 
     # return robot_pose
     return None
@@ -431,13 +430,15 @@ def get_robot_pose(drive_meas):
     # '''
     global robot_pose
     global landmarks # NEW Added
-    landmarks, detector_output = take_and_analyse_picture()
-    ekf.predict(drive_meas)
+    # landmarks, detector_output = take_and_analyse_picture()
+    # ekf.predict(drive_meas)
     # ekf.add_landmarks(landmarks) #TODO not sure if this is needed or not
-    ekf.update(landmarks) 
+    # ekf.update(landmarks) 
 
     
-    robot_pose = ekf.robot.state.reshape(-1)
+    # robot_pose = ekf.robot.state.reshape(-1)
+    
+    robot_pose = [0.,0.,0.]
     print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
 
 
@@ -829,8 +830,8 @@ if __name__ == "__main__":
     baseline = np.loadtxt(fileB, delimiter=',')
 
     # neural network file location
-    args.ckpt = "network/scripts/model/yolov8_model_best.pt"
-    yolov = Detector(args.ckpt)
+    # args.ckpt = "network/scripts/model/yolov8_model_best.pt"
+    # yolov = Detector(args.ckpt)
 
 ####################################################
 # set up all EKF using given values
@@ -851,8 +852,8 @@ if __name__ == "__main__":
 
 ####################################################
 # Initiate UI
-    start = initiate_UI()
-    operate = Operate()
+    # start = initiate_UI()
+    # operate = Operate()
 
 ####################################################
     search_list = read_search_list()
@@ -886,7 +887,7 @@ if __name__ == "__main__":
     # turn_to_fruit()
 
 ########################################   A* CODE INTEGRATED ##################################################
-    '''
+    # '''
     while True:
         try:
             print()
@@ -896,9 +897,11 @@ if __name__ == "__main__":
             sub_waypoint = [float(x),float(y)]
             drive_to_point(sub_waypoint)
         except:
+            if(str(x)=='z' or str(y) =='z'):
+                break
             print("enter again")
-    '''
     # '''
+    '''
     waypoints = wp.generateWaypoints(search_list)
     
     for waypoint_progress in range(3):
@@ -913,8 +916,6 @@ if __name__ == "__main__":
         else: 
             current_start_pos = waypoints[waypoint_progress-1]
         path = pathFind.main(current_start_pos, current_waypoint,[])
-        # path.pop(0)
-        # path.pop(0)
         path.append(path[-1]) # NEW Added last sub-waypoint again
         print(path)
 
@@ -934,15 +935,15 @@ if __name__ == "__main__":
         
             # cv2.imshow('Predict',  aruco_img)
             # cv2.waitKey(0)
-            if (i+1)%3 == 0:
+            if (i+1)%20 == 0:
                 print("localising")
-                # localize(sub_waypoint)
+                localize(sub_waypoint)
                 # cv2.imshow('Predict',  aruco_img)
                 # cv2.waitKey(0)
                 print("localise done")
             time.sleep(3)
         print(f"###################################\nVisited Fruit {waypoint_progress+1}")
-    # '''
+    '''
 # 
     # bare minimum waypoint
     # for i in range(8):

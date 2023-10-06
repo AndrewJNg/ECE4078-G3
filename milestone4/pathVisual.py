@@ -4,7 +4,7 @@ from queue import PriorityQueue
 import json
 import numpy as np
 
-WIDTH = 640
+WIDTH = 40*17
 WIN = pygame.display.set_mode((WIDTH, WIDTH))
 pygame.display.set_caption("A* Path Finding Algorithm")
 
@@ -16,7 +16,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 PURPLE = (128, 0, 128)
 ORANGE = (255, 165 ,0)
-GREY = (128, 128, 128)
+GREY = (220, 220, 220) #128, 128, 128
 TURQUOISE = (64, 224, 208)
 
 class Spot:
@@ -69,6 +69,9 @@ class Spot:
 	def make_path(self):
 		self.color = PURPLE
 
+	def	grid_line(self):
+		self.color = GREY
+
 	def draw(self, win):
 		pygame.draw.rect(win, self.color, (self.x, self.y, self.width, self.width))
 
@@ -87,17 +90,17 @@ class Spot:
 			self.neighbors.append(grid[self.row][self.col - 1])
 
 		# Addition of corners
-		if self.row > 0 and self.col > 0 and not grid[self.row - 1][self.col - 1].is_barrier(): # UP LEFT
-			self.neighbors.append(grid[self.row - 1][self.col - 1])
+		# if self.row > 0 and self.col > 0 and not grid[self.row - 1][self.col - 1].is_barrier(): # UP LEFT
+			# self.neighbors.append(grid[self.row - 1][self.col - 1])
 
-		if self.row > 0 and self.col < self.total_rows - 1 and not grid[self.row - 1][self.col + 1].is_barrier(): # UP RIGHT
-			self.neighbors.append(grid[self.row - 1][self.col + 1])
+		# if self.row > 0 and self.col < self.total_rows - 1 and not grid[self.row - 1][self.col + 1].is_barrier(): # UP RIGHT
+			# self.neighbors.append(grid[self.row - 1][self.col + 1])
 
-		if self.row < self.total_rows - 1 and self.col < self.total_rows - 1 and not grid[self.row + 1][self.col + 1].is_barrier(): # DOWN RIGHT
-			self.neighbors.append(grid[self.row + 1][self.col + 1])
+		# if self.row < self.total_rows - 1 and self.col < self.total_rows - 1 and not grid[self.row + 1][self.col + 1].is_barrier(): # DOWN RIGHT
+			# self.neighbors.append(grid[self.row + 1][self.col + 1])
 
-		if self.row < self.total_rows - 1 and self.col > 0 and not grid[self.row + 1][self.col - 1].is_barrier(): # DOWN LEFT
-			self.neighbors.append(grid[self.row + 1][self.col - 1])
+		# if self.row < self.total_rows - 1 and self.col > 0 and not grid[self.row + 1][self.col - 1].is_barrier(): # DOWN LEFT
+			# self.neighbors.append(grid[self.row + 1][self.col - 1])
 
 
 
@@ -108,8 +111,7 @@ class Spot:
 def h(p1, p2): # MODIFIED TO EUCLIDEAN DISTANCE
 	x1, y1 = p1
 	x2, y2 = p2
-	d = np.sqrt((y2 - y1)**2 + (x2 - x1)**2)
-	return d
+	return abs(x1 - x2) + abs(y1 - y2)
 
 
 def reconstruct_path(came_from, current, draw):
@@ -119,7 +121,7 @@ def reconstruct_path(came_from, current, draw):
 		
 		# MODIFICATION TO EXTRACT COORDINATES
 		row,col = current.get_pos()
-		print(grid_to_coord(row+1,col+1,64))
+		print(grid_to_coord(row,col,17))
 		current.make_path()
 		draw()
 	print("\nSTART")
@@ -185,15 +187,9 @@ def make_grid(rows, width):
 def draw_grid(win, rows, width):
     gap = width // rows
     for i in range(rows):
-        if (i) % 8 == 0:
-            pygame.draw.line(win, BLACK, (0, i * gap), (width, i * gap),2)
-        else:
-            pygame.draw.line(win, GREY, (0, i * gap), (width, i * gap))
+        pygame.draw.line(win, BLACK, (0, i * gap), (width, i * gap))
         for j in range(rows):
-            if (j) % 8 == 0:
-                pygame.draw.line(win, BLACK, (j * gap, 0), (j * gap, width),2)
-            else:
-                pygame.draw.line(win, GREY, (j * gap, 0), (j * gap, width))
+            pygame.draw.line(win, BLACK, (j * gap, 0), (j * gap, width))
 
 
 
@@ -218,10 +214,10 @@ def get_clicked_pos(pos, rows, width):
 	return row, col
 
 def groundtruth_to_grid(x,y,rows): # Convert ground truth coordinate to grid
-    row = (x + 1.6)*(rows/3.2)
-    col = (1.6 - y)*(rows/3.2)
-    row = int(row)
-    col = int(col)
+    row = (x + 1.6)/round(3.2/rows,1)
+    col = (1.6 - y)/round(3.2/rows,1)
+    row = round(row)
+    col = round(col)
     return row, col
 
 def read_groundtruth(grid,rows):
@@ -235,35 +231,28 @@ def read_groundtruth(grid,rows):
             spot.make_barrier()
         except:
             pass
-        try:
-            spot = grid[row-1][col]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row][col-1]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row-1][col-1]
-            spot.make_barrier()
-        except:
-            pass
     f.close()
 
+def set_gridbox(grid,rows):
+    for row in range(rows):
+        for col in range(rows):
+            if not (row+1) % 2 == 0 or not (col+1) % 2 == 0:
+                spot = grid[row][col]
+                spot.grid_line()
+
 def grid_to_coord(row,col,rows): # Grid to coordinate
-	x = (3.2/rows)*row - 1.6
-	y = 1.6 - (3.2/rows)*col  
-	return round(x,2),round(y,2)
+	x = round(3.2/rows,1)*row - 1.6
+	y = 1.6 - round(3.2/rows,1)*col 
+	return round(x,1),round(y,1)
   
 def main(win, width):
-    ROWS = 64
+    ROWS = 17
     grid = make_grid(ROWS, width)
 
     start = None
     end = None
-    
+
+    set_gridbox(grid,ROWS)
     read_groundtruth(grid,ROWS)
 
     run = True
@@ -310,6 +299,7 @@ def main(win, width):
                     start = None
                     end = None
                     grid = make_grid(ROWS, width)
+                    set_gridbox(grid,ROWS)
                     read_groundtruth(grid,ROWS)
 
     pygame.quit()
