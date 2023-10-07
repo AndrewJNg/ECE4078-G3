@@ -271,7 +271,6 @@ def read_search_list():
 
     return search_list
 
-'''
 def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
     """Print out the target fruits' pos in the search order
 
@@ -290,7 +289,6 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
                                                   np.round(fruit_true_pos[i][0], 1),
                                                   np.round(fruit_true_pos[i][1], 1)))
         n_fruit += 1
-'''
 
 def clamp_angle(rad_angle=0, min_value=-np.pi, max_value=np.pi):
 	"""
@@ -306,6 +304,7 @@ def clamp_angle(rad_angle=0, min_value=-np.pi, max_value=np.pi):
 	angle = (rad_angle + max_value) % (2 * np.pi) + min_value
 
 	return angle
+
 def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
     # Define the 2D bounding box points
     x_min, y_max,width, height = bounding_box
@@ -347,8 +346,9 @@ def drive_to_point(waypoint):
 
     ####################################################
     # after turning, drive straight to the waypoint
-    robot_straight(robot_to_waypoint_distance = math.hypot(waypoint[0]-robot_pose[0], waypoint[1]-robot_pose[1]))
-    print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
+    distance = math.hypot(waypoint[0]-robot_pose[0], waypoint[1]-robot_pose[1])
+    robot_straight(robot_to_waypoint_distance = distance)
+    # print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
 
 
 
@@ -366,46 +366,28 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     output:
     ### physical robot: robot would rotate by turn_angle amount
     """
-    global robot_pose
     global baseline
-    # wheel_vel_lin = 30 # tick to move the robot
-    # wheel_vel_ang = 10
     if abs(turn_angle) <=1.6: # ~90deg
         baseline = 10.6e-2
 
     elif abs(turn_angle) <=3.2: # ~180deg
         baseline = 8.9e-2
 
-    
-    # limit angle between -180 to 180 degree (suitable for robot turning)
-    turn_angle = (turn_angle) % (2*np.pi) 
-    turn_angle = turn_angle-2*np.pi if turn_angle>np.pi else turn_angle
-    
-
     # make robot turn a certain angle
+    turn_angle = clamp_angle(turn_angle) # limit angle between -180 to 180 degree (suitable for robot turning)
     turn_time = (abs(turn_angle) * ((baseline/2)/(scale*wheel_vel_ang))).tolist()
-    # print("Turning for {:.2f} seconds".format(turn_time))
-
     lv, rv = ppi.set_velocity([0, np.sign(turn_angle)], turning_tick=wheel_vel_ang, time=turn_time)
+
     ppi.set_velocity([0, 0], turning_tick=wheel_vel_lin, time=0.5) # stop with delay
     
     drive_meas = measure.Drive(lv,rv,turn_time)
     get_robot_pose(drive_meas)
 
-    # visualise
-    operate.draw(canvas)
-    pygame.display.update()
     
-    # return robot_pose
-    return None
 
 ########################################################################################################
 
 def robot_straight(robot_to_waypoint_distance=0,wheel_vel_lin=30,wheel_vel_ang = 25):
-    global robot_pose
-    # wheel_vel_lin = 30 # tick to move the robot
-    # wheel_vel_ang = 25
-
     drive_time = (robot_to_waypoint_distance / (scale * wheel_vel_lin) )
     # print("Driving for {:.2f} seconds".format(drive_time))
 
@@ -415,12 +397,7 @@ def robot_straight(robot_to_waypoint_distance=0,wheel_vel_lin=30,wheel_vel_ang =
     drive_meas = measure.Drive(lv,rv,drive_time)
     get_robot_pose(drive_meas)
 
-    # visualise
-    operate.draw(canvas)
-    pygame.display.update()
 
-    # return robot_pose
-    return None
 
 ########################################################################################################
 
@@ -440,118 +417,55 @@ def get_robot_pose(drive_meas):
     robot_pose[1] = waypoint[1]
     '''
 ####################################################
-    ## method 2: Using SLAM through EKF
+    ## method 2: Using SLAM through EKF filtering
     # '''
     global robot_pose
     global landmarks # NEW Added
     landmarks, detector_output = take_and_analyse_picture()
     ekf.predict(drive_meas)
-    # ekf.add_landmarks(landmarks) #TODO not sure if this is needed or not
     ekf.update(landmarks) 
 
     robot_pose = ekf.robot.state.reshape(-1)
-    print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
+    # print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
 
+    # visualise
+    operate.draw(canvas)
+    pygame.display.update()
 
     return robot_pose, landmarks
 
 ####################################################################################################
 def take_and_analyse_picture():
-    img = ppi.get_image()
     global aruco_img
+    
+    img = ppi.get_image()
     landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    # cv2.imshow('Predict',  aruco_img)
-    # cv2.waitKey(0)
-    # landmarks, aruco_img = aruco_det.detect_marker_positions(img)
-    detector_output, img_yolov = yolov.detect_single_image(img)
-    print(detector_output)
-
-
-    # cv2.imshow('Predict',  img_yolov)
-    # cv2.waitKey(0)
-    # print(aruco_corners[0][0])
-    # print(np.mean(aruco_corners[0][0], axis=0)[0])
-    '''
-    while((np.mean(aruco_corners[0][0], axis=0)[0]-(640/2)) > 20):
-        wheel_vel_lin = 30 # tick to move the robot
-        wheel_vel_ang = 25
-        img = ppi.get_image()
-
-        landmarks, aruco_img = aruco_det.detect_marker_positions(img)
-        # global robot_pose
-
-        
-        # turn_angle = -0.2
-        # # limit angle between -180 to 180 degree (suitable for robot turning)
-        # turn_angle = (turn_angle) % (2*np.pi) 
-        # turn_angle = turn_angle-2*np.pi if turn_angle>np.pi else turn_angle
-
-        # # make robot turn a certain angle
-        # turn_time = (abs(turn_angle) * ((baseline/2)/(scale*wheel_vel_ang))).tolist()
-        # print("Turning for {:.2f} seconds".format(turn_time))
-
-        lv, rv = ppi.set_velocity([0, -1], turning_tick=wheel_vel_ang)
-        # ppi.set_velocity([0, 0], turning_tick=wheel_vel_lin, time=0.5) # stop with delay
-    
-    ppi.set_velocity([0, 0], turning_tick=wheel_vel_lin, time=0.5) # stop with delay
-
-    while((np.mean(aruco_corners[0][0], axis=0)[0]-(640/2)) < -20):
-        img = ppi.get_image()
-
-        landmarks, aruco_img = aruco_det.detect_marker_positions(img)
-        # global robot_pose
-        
-        # wheel_vel_lin = 30 # tick to move the robot
-        # wheel_vel_ang = 25
-        
-        # turn_angle = 0.2
-        # # limit angle between -180 to 180 degree (suitable for robot turning)
-        # turn_angle = (turn_angle) % (2*np.pi) 
-        # turn_angle = turn_angle-2*np.pi if turn_angle>np.pi else turn_angle
-
-        # # make robot turn a certain angle 
-        # turn_time = (abs(turn_angle) * ((baseline/2)/(scale*wheel_vel_ang))).tolist()
-        # print("Turning for {:.2f} seconds".format(turn_time))
-
-        lv, rv = ppi.set_velocity([0, 1], turning_tick=wheel_vel_ang)
-    ppi.set_velocity([0, 0], turning_tick=wheel_vel_lin, time=0.5) # stop with delay
-    '''
-    
-    # cv2.imshow('Predict',  aruco_img)
-    # cv2.waitKey(0)
-    # cv2.imshow('Predict',  img_yolov)
-    # cv2.waitKey(0)
-
+    # detector_output, img_yolov = yolov.detect_single_image(img)
     detector_output =0
+    
+    # cv2.imshow('Predict',  aruco_img)
+    # cv2.waitKey(0)
+
     return landmarks, detector_output
     # return landmarks, detector_output,aruco_corners
 
 ####################################################################################################
-# '''
 def localize(waypoint): # turn and call get_robot_pose
     global robot_pose
     # baseline = 11.6e-2
     turn_angle = 2*np.pi/10
     wheel_vel_ang = 10
     turn_time = turn_angle * ((baseline/2)/(scale*wheel_vel_ang))
-    robot_pose_previous = robot_pose
-    print("\nLocalising Now")
+    # print("\nLocalising Now")
     turn_count = 0
     latest_pose = np.zeros((0,3))
     aruco_3_skip_flag = 0
     while turn_count<10:
         lv,rv = ppi.set_velocity([0, 1], turning_tick=wheel_vel_ang, time=turn_time)
-        turning_drive_meas = measure.Drive(lv,rv,turn_time)
+        drive_meas = measure.Drive(lv,rv,turn_time)
         ppi.set_velocity([0, 0], turning_tick=wheel_vel_ang, time=0.8) # immediate stop with small delay
-        robot_pose, lms = get_robot_pose(turning_drive_meas)
-        # visualise
-        operate.draw(canvas)
-        pygame.display.update()
-        print(turning_drive_meas)
+        robot_pose, lms = get_robot_pose(drive_meas)
         
-        # if lms>2:
-        #     aruco_3_skip_flag = 1
-        #     break
         ##########################################
         # Save robot poses and aruco markers seen in an array, then choose latest 2 aruco seen position, if available
         latest_pose = np.append(latest_pose,[[robot_pose[0],robot_pose[1],lms]],0)
@@ -560,16 +474,16 @@ def localize(waypoint): # turn and call get_robot_pose
         print(turn_count)
         
         robot_pose[2] = clamp_angle(robot_pose[2])
-        print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
+        # print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
         
-    print(f"Pose after localised : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
-    print("Finished localising")
+    # print(f"Pose after localised : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
+    # print("Finished localising")
 
-    return robot_pose
-    # '''
+
 ####################################################################################################
 # main loop
 if __name__ == "__main__":
+    ## Robot connection setup
     # arguments for starting command
     parser = argparse.ArgumentParser("Fruit searching")
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
@@ -585,8 +499,8 @@ if __name__ == "__main__":
     output = dh.OutputWriter('lab_output')
     pred_fname = ''
 
-
-    # obtain robot settings for camera and motor (found by calibration)
+####################################################
+    ## Obtain robot settings for camera and motor (found by calibration)
     global dist_coeffs
     fileD = "calibration/param/distCoeffs.txt"
     dist_coeffs = np.loadtxt(fileD, delimiter=',')
@@ -604,25 +518,23 @@ if __name__ == "__main__":
     baseline = np.loadtxt(fileB, delimiter=',')
 
     # neural network file location
-    args.ckpt = "network/scripts/model/yolov8_model_best.pt"
-    yolov = Detector(args.ckpt)
+    # args.ckpt = "network/scripts/model/yolov8_model_best.pt"
+    # yolov = Detector(args.ckpt)
 
 ####################################################
-# set up all EKF using given values
-    # read in the true map
+    ## Set up all EKF using given values in true map
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
     robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
     aruco_det = aruco.aruco_detector(robot, marker_length = 0.06)
     ekf = EKF(robot)
 
     landmarks = []
-    # print(aruco_true_pos)
-    # """
     for i,landmark in enumerate(aruco_true_pos):
-        measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),tag = i+1,covariance = (1e-5*np.eye(2))) # low covariance means that the uncertainty is low
+        measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
+                                              tag = i+1,
+                                              covariance = (1e-5*np.eye(2))) # lower covariance means that the uncertainty is lower
         landmarks.append(measurement_landmark)
     ekf.add_landmarks(landmarks)
-    
 
     search_list = read_search_list()
     print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
@@ -640,10 +552,10 @@ if __name__ == "__main__":
     global robot_pose
     robot_pose = [0.,0.,0.]
     ppi.set_velocity([0, 0]) # stop with delay
+    pygame.display.update()
     
-
 ########################################   A* CODE INTEGRATED ##################################################
-    '''
+    # '''
     waypoints = wp.generateWaypoints(search_list)
     
     for waypoint_progress in range(3):
@@ -653,27 +565,23 @@ if __name__ == "__main__":
         else: 
             current_start_pos = waypoints[waypoint_progress-1]
         path = pathFind.main(current_start_pos, current_waypoint,[])
-        path.append(path[-1]) # NEW Added last sub-waypoint again
+        path.append(path[-1]) # add last sub-waypoint again
 
         for i, sub_waypoint in enumerate(path, 3):
             # Drive to segmented waypoints
             print("    ")
             print("target: "+str(sub_waypoint))
             drive_to_point(sub_waypoint)
-            # print("after_POSE",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
+            print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
         
-            # cv2.imshow('Predict',  aruco_img)
-            # cv2.waitKey(0)
-            if (i+1)%20 == 0:
-                print("localising")
-                # localize(sub_waypoint)
-                print("localise done")
+            if (i+1)%5 == 0:
+                localize(sub_waypoint)
 
         print(f"######################################################################")
         print(f"Visited Fruit {waypoint_progress+1}")
         print(f"######################################################################")
         ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
-    '''
+    # '''
 
 
 
