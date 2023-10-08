@@ -1,7 +1,3 @@
-# Optional TODO: 
-# Modify getFruitArr as the current code only works if there is 5 fruits' location input into the ground truth.
-
-
 # Import modules
 import pygame
 import math
@@ -90,52 +86,71 @@ def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
     # print('\nWhere robot is relative to fruit: {}\n'.format(min_dir_arr))   # Debug
     return final_visit_pos
 
-# Based on search order, generate fruit_arr containing fruit position
-"""def getFruitArr(all_fruits, search_list_file_name):
-    search_fruits = all_fruits
-    # Open the file for reading
-    with open(search_list_file_name, 'r') as file:
-        # Read the contents of the file into a list
-        lines = file.readlines()
-
-    # Strip any leading or trailing whitespace from each line and store them in a list
-    data = [line.strip() for line in lines]
-
-    for i in data:
-        if data == 'redapple':
-            search_fruits.append(all_fruits[0])
-        if data == 'greenapple':
-            search_fruits.append(all_fruits[1])
-        if data == 'orange':
-            search_fruits.append(all_fruits[2])
-        if data == 'mango':
-            search_fruits.append(all_fruits[3])
-        if data == 'capsicum':
-            search_fruits.append(all_fruits[4])
-    print(data)
-    print(search_fruits)
-    return search_fruits"""
-
-# Based on search order, generate fruit_arr containing fruit position
-def getFruitArr(all_fruits, search_list):
+# Based on search order, generate fruit_arr and obstacles_arr containing fruit position
+def getFruitArr(search_list, fruit_list, fruit_true_pos, obstacles_arr):
     search_fruits = []
+    markerNum = len(obstacles_arr)
+    # search_fruits = [[0] * 2 for i in range(len(search_list))]
+    for i, to_search in enumerate(search_list):
+        for j, fruit in enumerate(fruit_list):
+            if to_search == fruit:
+                # search_fruits.append(fruit_true_pos[j])
+                search_fruits[i] = fruit_true_pos[j] # TODO Check if needs rounding
+            else:
+                # obstacles_arr.append(fruit_true_pos[j])
+                obstacles_arr[markerNum+i] = fruit_true_pos[j] # TODO Fix
+    print(search_fruits)
+    print(obstacles_arr)
+    return search_fruits, obstacles_arr
 
-    for data in search_list:
-        if data == 'redapple':
-            search_fruits.append(all_fruits[0])
-        if data == 'greenapple':
-            search_fruits.append(all_fruits[1])
-        if data == 'orange':
-            search_fruits.append(all_fruits[2])
-        if data == 'mango':
-            search_fruits.append(all_fruits[3])
-        if data == 'capsicum':
-            search_fruits.append(all_fruits[4])
+def round_to_accuracy(number, accuracy=0.4):
+    if accuracy <= 0:
+        raise ValueError("Accuracy must be greater than 0")
+    
+    rounded_value = round(number / accuracy) * accuracy
+    return rounded_value
 
-    # print(search_fruits) # Debug
-    return search_fruits
+def read_true_map(fname):
+    """Read the ground truth map and output the pose of the ArUco markers and 3 types of target fruit to search
 
-# For running this file independently
+    @param fname: filename of the map
+    @return:
+        1) list of target fruits, e.g. ['redapple', 'greenapple', 'orange']
+        2) locations of the target fruits, [[x1, y1], ..... [xn, yn]]
+        3) locations of ArUco markers in order, i.e. pos[9, :] = position of the aruco10_0 marker
+    """
+    with open(fname, 'r') as f:
+        try:
+            gt_dict = json.load(f)                   
+        except ValueError as e:
+            with open(fname, 'r') as f:
+                gt_dict = ast.literal_eval(f.readline())   
+        fruit_list = []
+        fruit_true_pos = []
+        aruco_true_pos = np.empty([10, 2])
+
+        # remove unique id of targets of the same type
+        for key in gt_dict:
+            x = round_to_accuracy(gt_dict[key]['x'])
+            y = round_to_accuracy(gt_dict[key]['y'])
+
+            if key.startswith('aruco'):
+                if key.startswith('aruco10'):
+                    aruco_true_pos[9][0] = x
+                    aruco_true_pos[9][1] = y
+                else:
+                    marker_id = int(key[5])
+                    aruco_true_pos[marker_id-1][0] = x
+                    aruco_true_pos[marker_id-1][1] = y
+            else:
+                fruit_list.append(key[:-2])
+                if len(fruit_true_pos) == 0:
+                    fruit_true_pos = np.array([[x, y]])
+                else:
+                    fruit_true_pos = np.append(fruit_true_pos, [[x, y]], axis=0)
+
+        return fruit_list, fruit_true_pos, aruco_true_pos
+
 def read_search_list():
     """Read the search order of the target fruits
 
@@ -150,101 +165,69 @@ def read_search_list():
 
     return search_list
 
+def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
+    """Print out the target fruits' pos in the search order
+
+    @param search_list: search order of the fruits
+    @param fruit_list: list of target fruits
+    @param fruit_true_pos: positions of the target fruits
+    """
+
+    print("Search order:")
+    n_fruit = 1
+    for fruit in search_list:
+        for i in range(len(fruit_list)):
+            if fruit == fruit_list[i]:
+                print('{}) {} at [{}, {}]'.format(n_fruit,
+                                                  fruit,
+                                                  np.round(fruit_true_pos[i][0], 1),
+                                                  np.round(fruit_true_pos[i][1], 1)))
+        n_fruit += 1
+
+# For debugging
+def getFromFile(fname):
+    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(fname)
+    search_list = read_search_list()
+    print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
+    return search_list, fruits_list, fruits_true_pos, aruco_true_pos
 
 # Main function
-def generateWaypoints(search_list):
+def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_true_pos={}):
     # Define params:
     start_pos = [0,0]   # start pos
     tolerance = 0.2     # distance when robot will take picture from fruit
 
-    all_fruits = [[0] * 2 for i in range(5)]
-    obstacles_arr = [[0] * 2 for i in range(10)]
-
-    # Extracting data from ground truth file
-    ground_truth_fname = 'M4_true_map.txt'
-    f = open(ground_truth_fname, "r")
-    data = json.loads(f.read())
-    count = 0
-
-    # for i in data:
-    #     if count > 9:
-    #         if count-10 > 2:
-    #             break
-    #         else:
-    #             all_fruits[count-10] = [data[i]['x'], data[i]['y']]
-    #     else:
-    #         obstacles_arr[count] = [data[i]['x'], data[i]['y']]
-    #     count += 1
-
-    for i in data:
-        if count > 9:
-            all_fruits[count-10] = [data[i]['x'], data[i]['y']]
+    # For debugging, to run independently
+    debug = 1
+    if debug:
+        groundtruth = 1
+        if groundtruth == 1:
+            fname = 'M4_true_map.txt'
+            print('Reading from ground truth map')
         else:
-            obstacles_arr[count] = [data[i]['x'], data[i]['y']]
-        count += 1
+            fname = 'M5_est_map.txt'
+            print('Reading from estimate SLAM map')
+        search_list, fruits_list, fruits_true_pos, aruco_true_pos = getFromFile(fname)
     
-    
-    search_fruits = getFruitArr(all_fruits, search_list)
-    f.close()
-    # print(all_fruits) # Debug
-    print("Fruits' Location:{}".format(search_fruits))
-    
+    #print(f'########## Debug ##########\nsearch_list:\n{search_list}\n\nfruits_list:\n{fruits_list}\n\nfruits_true_pos:\n{fruits_true_pos}\n\naruco_true_pos:\n{aruco_true_pos}\n\n')
+    # Extracting data from param
+    search_fruits, obstacles_arr = getFruitArr(search_list, fruits_list, fruits_true_pos, aruco_true_pos)
+
+    # print(search_fruits) # Debug
+
+    print("Fruits' Location:\n{}".format(search_fruits))
+    #TODO Add obstacles (fruits & markers) into obstacles array
     waypoints = getPath(tolerance, start_pos, search_fruits, obstacles_arr, search_list)
 
     # Code For debugging
-    print("\nFinal path:")
-    print(waypoints)
-    print("\n\n")
+    # print("\nFinal path:")
+    # print(waypoints)
+    # print("\n\n")
 
     return waypoints
 
-
-################################################### FOR RUNNING FILE INDEPENDENTLY ##############################################
-# Main function
-def generateWaypointsDebug():
-    # Define params:
-    start_pos = [0,0]   # start pos
-    tolerance = 0.2     # distance when robot will take picture from fruit
-
-    all_fruits = [[0] * 2 for i in range(5)]
-    obstacles_arr = [[0] * 2 for i in range(10)]
-
-    # Extracting data from ground truth file
-    ground_truth_fname = 'M4_true_map.txt'
-    f = open(ground_truth_fname, "r")
-    data = json.loads(f.read())
-    count = 0
-
-    # for i in data:
-    #     if count > 9:
-    #         if count-10 > 2:
-    #             break
-    #         else:
-    #             all_fruits[count-10] = [data[i]['x'], data[i]['y']]
-    #     else:
-    #         obstacles_arr[count] = [data[i]['x'], data[i]['y']]
-    #     count += 1
-
-    for i in data:
-        if count > 9:
-            all_fruits[count-10] = [data[i]['x'], data[i]['y']]
-        else:
-            obstacles_arr[count] = [data[i]['x'], data[i]['y']]
-        count += 1
-
-    search_list = read_search_list()
-    search_fruits = getFruitArr(all_fruits, search_list)
-    f.close()
-    print(all_fruits) # Debug
-    print("Fruits' Location:{}".format(search_fruits))   # Debug
-    
-    waypoints = getPath(tolerance, start_pos, search_fruits, obstacles_arr, search_list)
-
-    # Code For debugging
-    print("\nFinal path:")
-    print(waypoints)
-    print("\n\n")
-
-    return None
-
-generateWaypointsDebug()
+# Debug
+waypoints = generateWaypoints()
+print("\nFinal path:")
+print(waypoints)
+print("\n\n")
