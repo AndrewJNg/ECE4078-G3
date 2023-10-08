@@ -1,5 +1,4 @@
 # M4 - Autonomous fruit searching
-
 # basic python packages
 import sys, os
 import cv2
