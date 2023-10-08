@@ -213,9 +213,7 @@ def initiate_UI():
 
     return None
 
-
-
-
+################################################################### Map functions ###################################################################
 def read_true_map(fname):
     """Read the ground truth map and output the pose of the ArUco markers and 3 types of target fruit to search
 
@@ -290,6 +288,7 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
                                                   np.round(fruit_true_pos[i][1], 1)))
         n_fruit += 1
 
+################################################################### Helper functions ###################################################################
 def clamp_angle(rad_angle=0, min_value=-np.pi, max_value=np.pi):
 	"""
 	Restrict angle to the range [min, max]
@@ -304,31 +303,6 @@ def clamp_angle(rad_angle=0, min_value=-np.pi, max_value=np.pi):
 	angle = (rad_angle + max_value) % (2 * np.pi) + min_value
 
 	return angle
-
-def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
-    # Define the 2D bounding box points
-    x_min, y_max,width, height = bounding_box
-    x_max = x_min - width
-    y_min = y_max - height
-    # x_min, y_min, x_max, y_max = bounding_box
-
-    # Calculate the center of the bounding box
-    x_center = (x_min + x_max) / 2
-    y_center = (y_min + y_max) / 2
-
-    # Create a homogeneous 2D point
-    point_2d = np.array([x_center, y_center, 1.0])
-
-    # Invert the camera matrix to get the camera's extrinsic matrix
-    inverse_camera_matrix = np.linalg.inv(camera_matrix)
-
-    # Calculate the 3D point in camera coordinates
-    point_3d_camera = np.dot(inverse_camera_matrix, point_2d)
-
-    # Apply the rotation and translation to convert to world coordinates
-    point_3d_world = np.dot(rotation_matrix, point_3d_camera) + translation_vector
-
-    return point_3d_world
 
 def angleToPulse(angle):
 
@@ -355,12 +329,7 @@ def angleToPulse(angle):
     # print(pulse)
     return pulse
 
-########################################################################################################
-# Waypoint navigation
-# the robot automatically drives to a given [x,y] coordinate
-# additional improvements:
-# you may use different motion model parameters for robot driving on its own or driving while pushing a fruit
-# try changing to a fully automatic delivery approach: develop a path-finding algorithm that produces the waypoints
+################################################################### Robot drive functions ###################################################################
 def drive_to_point(waypoint):
     global robot_pose
     
@@ -375,8 +344,6 @@ def drive_to_point(waypoint):
     distance = math.hypot(waypoint[0]-robot_pose[0], waypoint[1]-robot_pose[1])
     robot_straight(robot_to_waypoint_distance = distance)
     # print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
-
-########################################################################################################
 
 def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     """
@@ -407,8 +374,6 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     drive_meas = measure.Drive(lv,rv,turn_time)
     get_robot_pose(drive_meas)
 
-########################################################################################################
-
 def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang = 25):
     drive_time = (robot_to_waypoint_distance / (scale * wheel_vel_lin) )
     # print("Driving for {:.2f} seconds".format(drive_time))
@@ -419,8 +384,47 @@ def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang
     drive_meas = measure.Drive(lv,rv,drive_time)
     get_robot_pose(drive_meas)
 
-########################################################################################################
+################################################################### Pictures and model ###################################################################
+def take_and_analyse_picture():
+    global aruco_img
+    
+    img = ppi.get_image()
+    landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
+    # detector_output, img_yolov = yolov.detect_single_image(img)
+    detector_output =0
+    
+    # cv2.imshow('Predict',  aruco_img)
+    # cv2.waitKey(0)
 
+    return landmarks, detector_output
+    # return landmarks, detector_output,aruco_corners
+
+def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
+    # Define the 2D bounding box points
+    x_min, y_max,width, height = bounding_box
+    x_max = x_min - width
+    y_min = y_max - height
+    # x_min, y_min, x_max, y_max = bounding_box
+
+    # Calculate the center of the bounding box
+    x_center = (x_min + x_max) / 2
+    y_center = (y_min + y_max) / 2
+
+    # Create a homogeneous 2D point
+    point_2d = np.array([x_center, y_center, 1.0])
+
+    # Invert the camera matrix to get the camera's extrinsic matrix
+    inverse_camera_matrix = np.linalg.inv(camera_matrix)
+
+    # Calculate the 3D point in camera coordinates
+    point_3d_camera = np.dot(inverse_camera_matrix, point_2d)
+
+    # Apply the rotation and translation to convert to world coordinates
+    point_3d_world = np.dot(rotation_matrix, point_3d_camera) + translation_vector
+
+    return point_3d_world
+
+################################################################### SLAM - EKF method  ###################################################################
 def get_robot_pose(drive_meas,servo_theta=0):
 ####################################################
     ## method 1: open loop position 
@@ -455,22 +459,6 @@ def get_robot_pose(drive_meas,servo_theta=0):
 
     return robot_pose, landmarks
 
-####################################################################################################
-def take_and_analyse_picture():
-    global aruco_img
-    
-    img = ppi.get_image()
-    landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    # detector_output, img_yolov = yolov.detect_single_image(img)
-    detector_output =0
-    
-    # cv2.imshow('Predict',  aruco_img)
-    # cv2.waitKey(0)
-
-    return landmarks, detector_output
-    # return landmarks, detector_output,aruco_corners
-
-####################################################################################################
 def localize(waypoint): # turn and call get_robot_pose
     global robot_pose
     
@@ -499,7 +487,7 @@ def localize(waypoint): # turn and call get_robot_pose
     get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
     time.sleep(0.5)
     
-####################################################################################################
+################################################################### Main  ###################################################################
 # main loop
 if __name__ == "__main__":
     ## Robot connection setup
