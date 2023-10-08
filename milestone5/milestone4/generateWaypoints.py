@@ -89,18 +89,19 @@ def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
 # Based on search order, generate fruit_arr and obstacles_arr containing fruit position
 def getFruitArr(search_list, fruit_list, fruit_true_pos, obstacles_arr):
     search_fruits = []
-    markerNum = len(obstacles_arr)
+    # markerNum = len(obstacles_arr)
     # search_fruits = [[0] * 2 for i in range(len(search_list))]
     for i, to_search in enumerate(search_list):
         for j, fruit in enumerate(fruit_list):
             if to_search == fruit:
-                # search_fruits.append(fruit_true_pos[j])
-                search_fruits[i] = fruit_true_pos[j] # TODO Check if needs rounding
+                if len(search_fruits) == 0:
+                    search_fruits = np.array([fruit_true_pos[j]])
+                else:
+                    search_fruits = np.append(search_fruits, [fruit_true_pos[j]], axis=0)
+                
             else:
-                # obstacles_arr.append(fruit_true_pos[j])
-                obstacles_arr[markerNum+i] = fruit_true_pos[j] # TODO Fix
-    print(search_fruits)
-    print(obstacles_arr)
+                obstacles_arr = np.append(obstacles_arr, [fruit_true_pos[j]], axis=0)
+                pass
     return search_fruits, obstacles_arr
 
 def round_to_accuracy(number, accuracy=0.4):
@@ -212,10 +213,10 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
     #print(f'########## Debug ##########\nsearch_list:\n{search_list}\n\nfruits_list:\n{fruits_list}\n\nfruits_true_pos:\n{fruits_true_pos}\n\naruco_true_pos:\n{aruco_true_pos}\n\n')
     # Extracting data from param
     search_fruits, obstacles_arr = getFruitArr(search_list, fruits_list, fruits_true_pos, aruco_true_pos)
-
-    # print(search_fruits) # Debug
-
-    print("Fruits' Location:\n{}".format(search_fruits))
+    
+    # Debug
+    print(f'search_fruits:\n{search_fruits}') 
+    print(f'obstacles_arr:\n{obstacles_arr}')
     #TODO Add obstacles (fruits & markers) into obstacles array
     waypoints = getPath(tolerance, start_pos, search_fruits, obstacles_arr, search_list)
 
