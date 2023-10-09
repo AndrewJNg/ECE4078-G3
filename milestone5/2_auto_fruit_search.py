@@ -476,7 +476,7 @@ def localize(waypoint): # turn and call get_robot_pose
     time.sleep(0.2)
     
     # increment by a small angle until it finish 180 degree
-    increment_angle = 15
+    increment_angle = 5
     current_angle = -90
     for i in range(int(180/increment_angle)):
         current_angle+=increment_angle
@@ -596,7 +596,7 @@ if __name__ == "__main__":
             print("target: "+str(sub_waypoint))
             drive_to_point(sub_waypoint)
             print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
-            if (i+1)%2 == 0:
+            if (i+1)%1 == 0:
                 localize(sub_waypoint)
         
 
