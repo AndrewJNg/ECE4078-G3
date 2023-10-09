@@ -338,11 +338,15 @@ def drive_to_point(waypoint):
     robot_to_waypoint_angle = np.arctan2(waypoint[1]-robot_pose[1],waypoint[0]-robot_pose[0]) # Measured from x-axis (theta=0)
     turn_angle = robot_to_waypoint_angle - robot_pose[2]
     robot_turn(turn_angle)
+    operate.draw(canvas)
+    pygame.display.update()
 
     ####################################################
     # after turning, drive straight to the waypoint
     distance = math.hypot(waypoint[0]-robot_pose[0], waypoint[1]-robot_pose[1])
     robot_straight(robot_to_waypoint_distance = distance)
+    operate.draw(canvas)
+    pygame.display.update()
     # print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
 
 def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
@@ -359,10 +363,10 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     """
     global baseline
     if abs(turn_angle) <=1.6: # ~90deg
-        baseline = 10.6e-2
+        baseline = 10.2e-2
 
     elif abs(turn_angle) <=3.2: # ~180deg
-        baseline = 8.9e-2
+        baseline = 9.0e-2
 
     # make robot turn a certain angle
     turn_angle = clamp_angle(turn_angle) # limit angle between -180 to 180 degree (suitable for robot turning)
@@ -467,9 +471,9 @@ def localize(waypoint): # turn and call get_robot_pose
 
     # look right first
     ppi.set_servo(angleToPulse(-90*np.pi/180))
-    time.sleep(0.5)
+    time.sleep(0.3)
     get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
-    time.sleep(0.5)
+    time.sleep(0.2)
     
     # increment by a small angle until it finish 180 degree
     increment_angle = 15
@@ -477,13 +481,13 @@ def localize(waypoint): # turn and call get_robot_pose
     for i in range(int(180/increment_angle)):
         current_angle+=increment_angle
         ppi.set_servo(angleToPulse(current_angle*np.pi/180))
-        time.sleep(0.5)
+        time.sleep(0.3)
         get_robot_pose(drive_meas,servo_theta=increment_angle*np.pi/180)
-        time.sleep(0.5)
+        time.sleep(0.2)
 
     # look back at center
     ppi.set_servo(angleToPulse(0*np.pi/180))
-    time.sleep(0.5)
+    time.sleep(0.3)
     get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
     time.sleep(0.5)
     
@@ -540,8 +544,8 @@ if __name__ == "__main__":
     landmarks = []
     for i,landmark in enumerate(aruco_true_pos):
         measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
-                                              tag = i+1,
-                                              covariance = (1e-5*np.eye(2))) # lower covariance means that the uncertainty is lower
+                                              tag = i+1)
+                                              
         landmarks.append(measurement_landmark)
     ekf.add_landmarks(landmarks)
 
@@ -560,13 +564,14 @@ if __name__ == "__main__":
 ####################################################
     global robot_pose
     robot_pose = [0.,0.,0.]
-    pygame.display.update()
-
+    # pygame.display.update()
+    # robot_turn(turn_angle=90*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+    # robot_straight(0.8)
 ########################################   A* CODE INTEGRATED ##################################################
-    localize([0.,0.])
-    localize([0.,0.])
-    localize([0.,0.])
-    '''
+    # localize([0.,0.])
+    # localize([0.,0.])
+    # localize([0.,0.])
+    # '''
     waypoints = wp.generateWaypoints(search_list)
     
     for waypoint_progress in range(3):
@@ -576,23 +581,30 @@ if __name__ == "__main__":
         else: 
             current_start_pos = waypoints[waypoint_progress-1]
         path = pathFind.main(current_start_pos, current_waypoint,[])
-        path.append(path[-1]) # add last sub-waypoint again
+        # path.pop(0)
+        # path.pop(0)
+        path.append(path[-1]) # NEW Added last sub-waypoint again
+        localize([0,0])
+        robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+        localize([0,0])
 
         for i, sub_waypoint in enumerate(path, 3):
             # Drive to segmented waypoints
+            # operate.draw(canvas)
+            pygame.display.update()
             print("    ")
             print("target: "+str(sub_waypoint))
             drive_to_point(sub_waypoint)
             print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
-        
-            if (i+0)%5 == 0:
+            if (i+1)%2 == 0:
                 localize(sub_waypoint)
+        
 
         print(f"######################################################################")
         print(f"Visited Fruit {waypoint_progress+1}")
         print(f"######################################################################")
         ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
-    '''
+    # '''
 
 
 
