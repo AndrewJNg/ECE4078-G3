@@ -35,16 +35,18 @@ def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
         # Get fruit position
         x0, y0 = currentFruit
 
-        # Generate locations
+        # Generate locations for non-diagonal visit_pos
         visit_pos_arr = {}
         visit_pos_arr['right'] =    [round(x0+tolerance,1), y0, round(x0+0.4,1), y0]
         visit_pos_arr['up'] =       [x0, round(y0+tolerance,1), x0, round(y0+0.4,1)]
         visit_pos_arr['left'] =     [round(x0-tolerance,1), y0, round(x0-0.4,1), y0]
         visit_pos_arr['down'] =     [x0, round(y0-tolerance,1), x0, round(y0-0.4,1)]
-        visit_pos_arr['upright'] =      [round(x0+tolerance,1), round(y0+tolerance,1), round(x0+0.4,1), round(y0+0.4,1)]
-        visit_pos_arr['upleft'] =       [round(x0-tolerance,1), round(y0+tolerance,1), round(x0-0.4,1), round(y0+0.4,1)]
-        visit_pos_arr['downleft'] =     [round(x0-tolerance,1), round(y0-tolerance,1), round(x0-0.4,1), round(y0-0.4,1)]
-        visit_pos_arr['downright'] =    [round(x0+tolerance,1), round(y0-tolerance,1), round(x0+0.4,1), round(y0-0.4,1)]
+        # Generate locations for diagonal visit_pos
+        diag_visit_pos_arr = {}
+        diag_visit_pos_arr['upright'] =      [round(x0+tolerance,1), round(y0+tolerance,1), round(x0+0.4,1), round(y0+0.4,1)]
+        diag_visit_pos_arr['upleft'] =       [round(x0-tolerance,1), round(y0+tolerance,1), round(x0-0.4,1), round(y0+0.4,1)]
+        diag_visit_pos_arr['downleft'] =     [round(x0-tolerance,1), round(y0-tolerance,1), round(x0-0.4,1), round(y0-0.4,1)]
+        diag_visit_pos_arr['downright'] =    [round(x0+tolerance,1), round(y0-tolerance,1), round(x0+0.4,1), round(y0-0.4,1)]
         # print('\nFruit {}: {}'.format(index, visit_pos_arr))  # Debug
         # Create a list to store positions to remove
         positions_to_remove = []
@@ -57,32 +59,36 @@ def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
                     # print('{} visit_pos clashes with obstacle {} at {} [{},{}]'.format(fruit_order[index], obstacle_idx, dir, pos[2],pos[3]))    # Debug
                     positions_to_remove.append(dir)
         
-        # Remove the positions that clashed with obstacles
+        # Remove positions that clashed with obstacles
         for dir in positions_to_remove:
             visit_pos_arr.pop(dir)
         # print(visit_pos_arr) # Debug
-        # Calculate distance for each location
+        # Calculate distance for each location, prioritizing non-diagonal visit_pos
         dist_dic = {}
         min_dist = 10000
-        for dir, pos in visit_pos_arr.items():
-            x_f, y_f = pos[0], pos[1]
-            dist = np.hypot(x_f-x_i, y_f-y_i)
-            dist_dic[dir] = dist
+        if len(visit_pos_arr) != 0: # Prioritize non-diagonal visit_pos
+            for dir, pos in visit_pos_arr.items():
+                x_f, y_f = pos[0], pos[1]
+                dist = np.hypot(x_f-x_i, y_f-y_i)
+                dist_dic[dir] = dist
+                # Update min_dist
+                if dist < min_dist:
+                    min_dir = dir
+                # Choose optimal visit_pos for non-diagonal visit_pos
+                final_visit_pos.append([visit_pos_arr[min_dir][0],visit_pos_arr[min_dir][1]])
 
-            # Update min_dist
-            if dist < min_dist:
-                min_dir = dir
-        
-        # visit_pos for current fruit
-        x_f, y_f = visit_pos_arr[min_dir][0], visit_pos_arr[min_dir][1]
+        else: # Take diagonal
+            for dir, pos in diag_visit_pos_arr.items():
+                x_f, y_f = pos[0], pos[1]
+                dist = np.hypot(x_f-x_i, y_f-y_i)
+                dist_dic[dir] = dist
 
-        heading = math.atan2(y_f-y_i, x_f-x_i)
+                # Update min_dist
+                if dist < min_dist:
+                    min_dir = dir
+            # Choose optimal visit_pos for diagonal visit_pos
+            final_visit_pos.append([diag_visit_pos_arr[min_dir][0],diag_visit_pos_arr[min_dir][1]])
 
-        # Choose optimal visit_pos
-        final_visit_pos.append([x_f, y_f, heading])
-
-        # min_dir_arr.append(min_dir) # TODO comment
-        
     # print('\nWhere robot is relative to fruit: {}\n'.format(min_dir_arr))   # Debug
     return final_visit_pos
 
@@ -217,7 +223,6 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
     # Debug
     print(f'search_fruits:\n{search_fruits}') 
     print(f'obstacles_arr:\n{obstacles_arr}')
-    #TODO Add obstacles (fruits & markers) into obstacles array
     waypoints = getPath(tolerance, start_pos, search_fruits, obstacles_arr, search_list)
 
     # Code For debugging
