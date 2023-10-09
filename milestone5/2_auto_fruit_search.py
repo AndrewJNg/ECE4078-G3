@@ -213,9 +213,7 @@ def initiate_UI():
 
     return None
 
-
-
-
+################################################################### Map functions ###################################################################
 def read_true_map(fname):
     """Read the ground truth map and output the pose of the ArUco markers and 3 types of target fruit to search
 
@@ -290,6 +288,7 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
                                                   np.round(fruit_true_pos[i][1], 1)))
         n_fruit += 1
 
+################################################################### Helper functions ###################################################################
 def clamp_angle(rad_angle=0, min_value=-np.pi, max_value=np.pi):
 	"""
 	Restrict angle to the range [min, max]
@@ -304,6 +303,105 @@ def clamp_angle(rad_angle=0, min_value=-np.pi, max_value=np.pi):
 	angle = (rad_angle + max_value) % (2 * np.pi) + min_value
 
 	return angle
+
+def angleToPulse(angle):
+
+    ## servo calibration
+    # while True:
+    #     try:
+    #         print()
+    #         print("next")
+    #         x = input("input, pulse: ")
+    #         # drive_to_point(sub_waypoint)
+    #         pygame.display.update()
+    #         ppi.set_servo(int(x))
+    #     except:
+    #         if(str(x)=='z' or str(y) =='z'):
+    #             break
+    #         print("enter again")
+    #     pygame.display.update()
+
+    #calibration
+    xp= [-90*np.pi/180,-45*np.pi/180,0*np.pi/180,45*np.pi/180,90*np.pi/180]
+    yp= [495,900,1360,1800,2350]
+    
+    pulse = int(np.interp(angle,xp,yp))
+    # print(pulse)
+    return pulse
+
+################################################################### Robot drive functions ###################################################################
+def drive_to_point(waypoint):
+    global robot_pose
+    
+    ####################################################
+    # rotate robot to turn towards the waypoint
+    robot_to_waypoint_angle = np.arctan2(waypoint[1]-robot_pose[1],waypoint[0]-robot_pose[0]) # Measured from x-axis (theta=0)
+    turn_angle = robot_to_waypoint_angle - robot_pose[2]
+    robot_turn(turn_angle)
+    operate.draw(canvas)
+    pygame.display.update()
+
+    ####################################################
+    # after turning, drive straight to the waypoint
+    distance = math.hypot(waypoint[0]-robot_pose[0], waypoint[1]-robot_pose[1])
+    robot_straight(robot_to_waypoint_distance = distance)
+    operate.draw(canvas)
+    pygame.display.update()
+    # print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
+
+def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
+    """
+    purpose:
+    ### enable the robot to turn a certain angle automatically
+   
+
+    input: 
+    ### turn_angle: angle to rotate on the spot radians (negative value means turn right)
+
+    output:
+    ### physical robot: robot would rotate by turn_angle amount
+    """
+    global baseline
+    if abs(turn_angle) <=1.6: # ~90deg
+        baseline = 10.2e-2
+
+    elif abs(turn_angle) <=3.2: # ~180deg
+        baseline = 9.0e-2
+
+    # make robot turn a certain angle
+    turn_angle = clamp_angle(turn_angle) # limit angle between -180 to 180 degree (suitable for robot turning)
+    turn_time = (abs(turn_angle) * ((baseline/2)/(scale*wheel_vel_ang))).tolist()
+    lv, rv = ppi.set_velocity([0, np.sign(turn_angle)], turning_tick=wheel_vel_ang, time=turn_time)
+
+    ppi.set_velocity([0, 0], turning_tick=wheel_vel_lin, time=0.5) # stop with delay
+    
+    drive_meas = measure.Drive(lv,rv,turn_time)
+    get_robot_pose(drive_meas)
+
+def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang = 25):
+    drive_time = (robot_to_waypoint_distance / (scale * wheel_vel_lin) )
+    # print("Driving for {:.2f} seconds".format(drive_time))
+
+    lv,rv = ppi.set_velocity([1, 0], tick=wheel_vel_lin, time=drive_time)
+    ppi.set_velocity([0, 0], turning_tick=wheel_vel_lin, time=0.5) # stop with delay
+
+    drive_meas = measure.Drive(lv,rv,drive_time)
+    get_robot_pose(drive_meas)
+
+################################################################### Pictures and model ###################################################################
+def take_and_analyse_picture():
+    global aruco_img
+    
+    img = ppi.get_image()
+    landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
+    # detector_output, img_yolov = yolov.detect_single_image(img)
+    detector_output =0
+    
+    # cv2.imshow('Predict',  aruco_img)
+    # cv2.waitKey(0)
+
+    return landmarks, detector_output
+    # return landmarks, detector_output,aruco_corners
 
 def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
     # Define the 2D bounding box points
@@ -329,79 +427,9 @@ def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, tr
     point_3d_world = np.dot(rotation_matrix, point_3d_camera) + translation_vector
 
     return point_3d_world
-########################################################################################################
-# Waypoint navigation
-# the robot automatically drives to a given [x,y] coordinate
-# additional improvements:
-# you may use different motion model parameters for robot driving on its own or driving while pushing a fruit
-# try changing to a fully automatic delivery approach: develop a path-finding algorithm that produces the waypoints
-def drive_to_point(waypoint):
-    global robot_pose
-    
-    ####################################################
-    # rotate robot to turn towards the waypoint
-    robot_to_waypoint_angle = np.arctan2(waypoint[1]-robot_pose[1],waypoint[0]-robot_pose[0]) # Measured from x-axis (theta=0)
-    turn_angle = robot_to_waypoint_angle - robot_pose[2]
-    robot_turn(turn_angle)
 
-    ####################################################
-    # after turning, drive straight to the waypoint
-    distance = math.hypot(waypoint[0]-robot_pose[0], waypoint[1]-robot_pose[1])
-    robot_straight(robot_to_waypoint_distance = distance)
-    # print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
-
-
-
-########################################################################################################
-
-def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
-    """
-    purpose:
-    ### enable the robot to turn a certain angle automatically
-   
-
-    input: 
-    ### turn_angle: angle to rotate on the spot radians (negative value means turn right)
-
-    output:
-    ### physical robot: robot would rotate by turn_angle amount
-    """
-    global baseline
-    if abs(turn_angle) <=1.6: # ~90deg
-        baseline = 10.6e-2
-
-    elif abs(turn_angle) <=3.2: # ~180deg
-        baseline = 8.9e-2
-
-    # make robot turn a certain angle
-    turn_angle = clamp_angle(turn_angle) # limit angle between -180 to 180 degree (suitable for robot turning)
-    turn_time = (abs(turn_angle) * ((baseline/2)/(scale*wheel_vel_ang))).tolist()
-    lv, rv = ppi.set_velocity([0, np.sign(turn_angle)], turning_tick=wheel_vel_ang, time=turn_time)
-
-    ppi.set_velocity([0, 0], turning_tick=wheel_vel_lin, time=0.5) # stop with delay
-    
-    drive_meas = measure.Drive(lv,rv,turn_time)
-    get_robot_pose(drive_meas)
-
-    
-
-########################################################################################################
-
-def robot_straight(robot_to_waypoint_distance=0,wheel_vel_lin=30,wheel_vel_ang = 25):
-    drive_time = (robot_to_waypoint_distance / (scale * wheel_vel_lin) )
-    # print("Driving for {:.2f} seconds".format(drive_time))
-
-    lv,rv = ppi.set_velocity([1, 0], tick=wheel_vel_lin, time=drive_time)
-    ppi.set_velocity([0, 0], turning_tick=wheel_vel_lin, time=0.5) # stop with delay
-
-    drive_meas = measure.Drive(lv,rv,drive_time)
-    get_robot_pose(drive_meas)
-
-
-
-########################################################################################################
-
-def get_robot_pose(drive_meas):
+################################################################### SLAM - EKF method  ###################################################################
+def get_robot_pose(drive_meas,servo_theta=0):
 ####################################################
     ## method 1: open loop position 
     '''
@@ -422,7 +450,8 @@ def get_robot_pose(drive_meas):
     global robot_pose
     global landmarks # NEW Added
     landmarks, detector_output = take_and_analyse_picture()
-    ekf.predict(drive_meas)
+    ekf.predict(drive_meas,servo_theta=servo_theta)
+    # ekf.add_landmarks(landmarks) 
     ekf.update(landmarks) 
 
     robot_pose = ekf.robot.state.reshape(-1)
@@ -434,53 +463,35 @@ def get_robot_pose(drive_meas):
 
     return robot_pose, landmarks
 
-####################################################################################################
-def take_and_analyse_picture():
-    global aruco_img
-    
-    img = ppi.get_image()
-    landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    # detector_output, img_yolov = yolov.detect_single_image(img)
-    detector_output =0
-    
-    # cv2.imshow('Predict',  aruco_img)
-    # cv2.waitKey(0)
-
-    return landmarks, detector_output
-    # return landmarks, detector_output,aruco_corners
-
-####################################################################################################
 def localize(waypoint): # turn and call get_robot_pose
     global robot_pose
-    # baseline = 11.6e-2
-    turn_angle = 2*np.pi/10
-    wheel_vel_ang = 10
-    turn_time = turn_angle * ((baseline/2)/(scale*wheel_vel_ang))
-    # print("\nLocalising Now")
-    turn_count = 0
-    latest_pose = np.zeros((0,3))
-    aruco_3_skip_flag = 0
-    while turn_count<10:
-        lv,rv = ppi.set_velocity([0, 1], turning_tick=wheel_vel_ang, time=turn_time)
-        drive_meas = measure.Drive(lv,rv,turn_time)
-        ppi.set_velocity([0, 0], turning_tick=wheel_vel_ang, time=0.8) # immediate stop with small delay
-        robot_pose, lms = get_robot_pose(drive_meas)
-        
-        ##########################################
-        # Save robot poses and aruco markers seen in an array, then choose latest 2 aruco seen position, if available
-        latest_pose = np.append(latest_pose,[[robot_pose[0],robot_pose[1],lms]],0)
-        ##########################################
-        turn_count += 1
-        print(turn_count)
-        
-        robot_pose[2] = clamp_angle(robot_pose[2])
-        # print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
-        
-    # print(f"Pose after localised : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
-    # print("Finished localising")
+    
+    lv,rv=ppi.set_velocity([0, 0], turning_tick=30, time=0.8) # immediate stop with small delay
+    drive_meas = measure.Drive(lv,rv,0.8)
 
+    # look right first
+    ppi.set_servo(angleToPulse(-90*np.pi/180))
+    time.sleep(0.3)
+    get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
+    time.sleep(0.2)
+    
+    # increment by a small angle until it finish 180 degree
+    increment_angle = 5
+    current_angle = -90
+    for i in range(int(180/increment_angle)):
+        current_angle+=increment_angle
+        ppi.set_servo(angleToPulse(current_angle*np.pi/180))
+        time.sleep(0.3)
+        get_robot_pose(drive_meas,servo_theta=increment_angle*np.pi/180)
+        time.sleep(0.2)
 
-####################################################################################################
+    # look back at center
+    ppi.set_servo(angleToPulse(0*np.pi/180))
+    time.sleep(0.3)
+    get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
+    time.sleep(0.5)
+    
+################################################################### Main  ###################################################################
 # main loop
 if __name__ == "__main__":
     ## Robot connection setup
@@ -527,12 +538,14 @@ if __name__ == "__main__":
     robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
     aruco_det = aruco.aruco_detector(robot, marker_length = 0.06)
     ekf = EKF(robot)
+    ppi.set_servo(angleToPulse(0*np.pi/180))
+    
 
     landmarks = []
     for i,landmark in enumerate(aruco_true_pos):
         measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
-                                              tag = i+1,
-                                              covariance = (1e-5*np.eye(2))) # lower covariance means that the uncertainty is lower
+                                              tag = i+1)
+                                              
         landmarks.append(measurement_landmark)
     ekf.add_landmarks(landmarks)
 
@@ -551,10 +564,13 @@ if __name__ == "__main__":
 ####################################################
     global robot_pose
     robot_pose = [0.,0.,0.]
-    ppi.set_velocity([0, 0]) # stop with delay
-    pygame.display.update()
-    
+    # pygame.display.update()
+    # robot_turn(turn_angle=90*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+    # robot_straight(0.8)
 ########################################   A* CODE INTEGRATED ##################################################
+    # localize([0.,0.])
+    # localize([0.,0.])
+    # localize([0.,0.])
     # '''
     waypoints = wp.generateWaypoints(search_list)
     
@@ -565,17 +581,24 @@ if __name__ == "__main__":
         else: 
             current_start_pos = waypoints[waypoint_progress-1]
         path = pathFind.main(current_start_pos, current_waypoint,[])
-        path.append(path[-1]) # add last sub-waypoint again
+        # path.pop(0)
+        # path.pop(0)
+        path.append(path[-1]) # NEW Added last sub-waypoint again
+        localize([0,0])
+        robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+        localize([0,0])
 
         for i, sub_waypoint in enumerate(path, 3):
             # Drive to segmented waypoints
+            # operate.draw(canvas)
+            pygame.display.update()
             print("    ")
             print("target: "+str(sub_waypoint))
             drive_to_point(sub_waypoint)
             print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
-        
-            if (i+1)%5 == 0:
+            if (i+1)%1 == 0:
                 localize(sub_waypoint)
+        
 
         print(f"######################################################################")
         print(f"Visited Fruit {waypoint_progress+1}")

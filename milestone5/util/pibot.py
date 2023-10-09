@@ -17,8 +17,8 @@ class Alphabot:
     # turning_tick = turning speed
     ########################################## 
     def set_velocity(self, command, tick=10, turning_tick=5, time=0): 
-        l_vel = 0.98*(command[0]*tick - command[1]*turning_tick)
-        r_vel = 0.95*(command[0]*tick + command[1]*turning_tick)
+        l_vel = 1.05*(command[0]*tick - command[1]*turning_tick)
+        r_vel = 1*(command[0]*tick + command[1]*turning_tick)
 
         l_vel_new = 1*(command[0]*tick - command[1]*turning_tick)
         r_vel_new = 1*(command[0]*tick + command[1]*turning_tick)
@@ -43,3 +43,19 @@ class Alphabot:
             print("Image retrieval timed out.")
             img = np.zeros((240,320,3), dtype=np.uint8)
         return img
+    
+    def set_buzzer(self, bool_buzz): 
+        try:
+            # print('setting buzzer')
+            requests.get(
+                f"http://{self.ip}:{self.port}/buzzer/set?value="+str(bool_buzz))
+        except:
+            pass
+        
+    def set_servo(self, input_pulse): 
+        try:
+            # print('setting servo')
+            requests.get(
+                f"http://{self.ip}:{self.port}/servo/set?value="+str(input_pulse))
+        except:
+            pass

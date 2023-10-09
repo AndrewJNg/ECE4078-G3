@@ -65,6 +65,7 @@ class Spot:
 
 	def make_path(self):
 		self.color = PURPLE
+        
 
 	def update_neighbors(self, grid):
 		self.neighbors = []
@@ -112,7 +113,7 @@ def reconstruct_path(came_from, current):
         
         # MODIFICATION TO EXTRACT COORDINATES
         row, col = current.get_pos()
-        x, y = grid_to_coord(row + 1, col + 1, 64)
+        x, y = grid_to_coord(row, col, 17)
         path.append([x, y])
         current.make_path()
     return path
@@ -171,10 +172,10 @@ def make_grid(rows, width):
 	return grid
 
 def groundtruth_to_grid(x,y,rows): # Convert ground truth coordinate to grid
-    row = (x + 1.6)*(rows/3.2)
-    col = (1.6 - y)*(rows/3.2)
-    row = int(row)
-    col = int(col)
+    row = (x + 1.6)/round(3.2/rows,1)
+    col = (1.6 - y)/round(3.2/rows,1)
+    row = round(row)
+    col = round(col)
     return row, col
 
 def read_groundtruth(grid,rows):
@@ -188,21 +189,6 @@ def read_groundtruth(grid,rows):
             spot.make_barrier()
         except:
             pass
-        try:
-            spot = grid[row-1][col]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row][col-1]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row-1][col-1]
-            spot.make_barrier()
-        except:
-            pass
     f.close()
 
 def add_obstacle(grid, rows, coord):
@@ -212,26 +198,11 @@ def add_obstacle(grid, rows, coord):
         spot.make_barrier()
     except:
         pass
-    try:
-        spot = grid[row-1][col]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row][col-1]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row-1][col-1]
-        spot.make_barrier()
-    except:
-        pass
 
 def grid_to_coord(row,col,rows): # Grid to coordinate
-	x = (3.2/rows)*row - 1.6
-	y = 1.6 - (3.2/rows)*col  
-	return round(x,2),round(y,2)
+	x = round(3.2/rows,1)*row - 1.6
+	y = 1.6 - round(3.2/rows,1)*col 
+	return round(x,1),round(y,1)
 
 def read_waypoint():
 	x = []
@@ -276,8 +247,8 @@ def simplify_path(path, threshold):
 # END: list [x2, y2]
 # EXTRA: nested list [[x, y], [x, y]]
 def main(START, END, EXTRA):
-    width = 640
-    ROWS = 64
+    ROWS = 17
+    width = 40*ROWS
     grid = make_grid(ROWS, width)
 
     start = None
@@ -314,8 +285,6 @@ def main(START, END, EXTRA):
 
     path = algorithm(grid, start, end)
 
-    # Add start point
-    path.append(START)
     # Reverse path
     path = path[::-1]
     # Add end point
@@ -331,7 +300,7 @@ def main(START, END, EXTRA):
 
 
 START = [0, 0]
-END = [1.2, 0.8]
+END = [1.2, -0.4]
 EXTRA = []
 path = main(START, END, EXTRA)
 print(path)
