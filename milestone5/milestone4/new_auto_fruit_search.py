@@ -670,8 +670,8 @@ def intInput(msg):
     return value
 
 def M4_L1(args):
-    keyboard_control = 0
-    operate = Operate(args, keyboard_control)
+    manual_control = 0
+    operate = Operate(args, manual_control)
     operate.init_ekf(args.calib_dir, args.ip)
     while True:
         try:
@@ -685,8 +685,8 @@ def M4_L1(args):
             print("enter again")
     
 def M4_L2(args):
-    keyboard_control = 0
-    operate = Operate(args, keyboard_control)
+    manual_control = 0
+    operate = Operate(args, manual_control)
     operate.init_ekf(args.calib_dir, args.ip)
     for waypoint_progress in range(3):
         global waypoints
@@ -732,8 +732,8 @@ def M4_L2(args):
         print(f"###################################\nVisited Fruit {waypoint_progress+1}")
 
 def M5_Teleoperate(args):
-    keyboard_control = 1
-    operate = Operate(args, keyboard_control)
+    manual_control = 1
+    operate = Operate(args, manual_control)
     operate.init_ekf(args.calib_dir, args.ip)
     
     # To be finished
@@ -751,8 +751,8 @@ def M5_Teleoperate(args):
         pygame.display.update()
 
 def M5_Navigation(args):
-    keyboard_control = 0
-    operate = Operate(args, keyboard_control)
+    manual_control = 0
+    operate = Operate(args, manual_control)
     operate.init_ekf(args.calib_dir, args.ip)
     # read from map
     if args.groundtruth:
@@ -782,6 +782,49 @@ def M5_Navigation(args):
     ########################################   A* CODE INTEGRATED ######################################
     global waypoints
     waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos)
+
+    for waypoint_progress in range(3):
+        global waypoints
+        global robot_pose
+        # Extract current waypoint
+        # print(waypoints)
+        current_waypoint = waypoints[waypoint_progress]
+        # print("Target waypoint:")  
+        # print(current_waypoint)      
+        if waypoint_progress == 0:
+            current_start_pos = [0,0]
+        else: 
+            current_start_pos = waypoints[waypoint_progress-1]
+        path = pathFind.main(current_start_pos, current_waypoint,[])
+        path.append(path[-1]) # Added last sub-waypoint again
+        print(path)
+
+        # print("localising")
+        # localize(path[0])
+        # print("localise done")
+        for i, sub_waypoint in enumerate(path, 3):
+            # Drive to segmented waypoints
+            # waypoint = sub_waypoint
+            print()
+            print()
+            print("    ")
+            print("target: "+str(sub_waypoint))
+            # print("before_POSE",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
+            operate.drive_to_point(sub_waypoint)
+            print("after_POSE",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
+        
+            if args.wait:
+                cv2.imshow('Predict', operate.aruco_img)
+                cv2.waitKey(0)
+            if args.localize:
+                if (i+1)%3 == 0:
+                    print("localising")
+                    operate.localize(sub_waypoint)
+                    # cv2.imshow('Predict',  aruco_img)
+                    # cv2.waitKey(0)
+                    print("localise done")
+            time.sleep(3)
+        print(f"###################################\nVisited Fruit {waypoint_progress+1}")
 
 # main loop
 if __name__ == "__main__":
