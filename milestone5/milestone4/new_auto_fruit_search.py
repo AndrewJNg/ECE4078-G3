@@ -784,8 +784,6 @@ def M5_Navigation(args):
     waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos)
 
     for waypoint_progress in range(3):
-        global waypoints
-        global robot_pose
         # Extract current waypoint
         # print(waypoints)
         current_waypoint = waypoints[waypoint_progress]
@@ -831,7 +829,7 @@ if __name__ == "__main__":
     # arguments for starting command
     parser = argparse.ArgumentParser("Fruit searching")
     parser.add_argument("--map", type=str, default='M5_est_map.txt')
-    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.209')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.3')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--groundtruth", type=int, default=0)
