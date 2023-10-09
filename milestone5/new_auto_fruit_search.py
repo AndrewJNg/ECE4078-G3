@@ -198,6 +198,8 @@ class Operate:
         pulse = angleToPulse(0)
         self.pibot.set_servo(pulse)
 
+        self.scale = 0
+
     # wheel control
     """def control(self):       
         if args.play_data:
@@ -220,7 +222,7 @@ class Operate:
 
     # SLAM with ARUCO markers       
     def update_slam(self):
-        lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
+        lms, self.aruco_img, _ = self.aruco_det.detect_marker_positions(self.img)
         if self.ekf_on: # and not self.debug_flag:
             self.ekf.predict(self.drive_meas)
             self.ekf.add_landmarks(lms)
@@ -258,6 +260,7 @@ class Operate:
         scale = np.loadtxt(fileS, delimiter=',')
         if ip == 'localhost':
             scale /= 2
+        self.scale = scale
         fileB = "{}baseline.txt".format(datadir)  
         baseline = np.loadtxt(fileB, delimiter=',')
         robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
@@ -392,6 +395,7 @@ class Operate:
 
     def drive_to_point(self, waypoint):
         global robot_pose
+        global operate
         # rotate robot to turn towards the waypoint
         robot_to_waypoint_angle = np.arctan2(waypoint[1]-robot_pose[1],waypoint[0]-robot_pose[0]) # Measured from x-axis (theta=0)
         turn_angle = robot_to_waypoint_angle - robot_pose[2]
@@ -401,11 +405,17 @@ class Operate:
         self.robot_turn(turn_angle)
         self.update_slam()
         self.get_robot_pose()
+        # visualise
+        operate.draw(canvas)
+        pygame.display.update()
         ####################################################
         # after turning, drive straight to the waypoint
         self.robot_straight(robot_to_waypoint_distance = math.hypot(waypoint[0]-robot_pose[0], waypoint[1]-robot_pose[1]))
         self.update_slam()
         self.get_robot_pose()
+        # visualise
+        operate.draw(canvas)
+        pygame.display.update()
         print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
 
     def robot_straight(self, robot_to_waypoint_distance=0,wheel_vel_lin=30,wheel_vel_ang = 25):
@@ -469,6 +479,7 @@ class Operate:
         '''
     ####################################################
         ## method 2: Using SLAM through EKF to get robot_pos
+        global robot_pose
         robot_pose = self.ekf.robot.state.reshape(-1)
         print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
 
@@ -655,6 +666,7 @@ def intInput(msg):
     return value
 
 def M4_L1(args):
+    global operate
     manual_control = 0
     operate = Operate(args, manual_control)
     operate.init_ekf(args.calib_dir, args.ip)
@@ -674,6 +686,7 @@ def M4_L2(args):
     global waypoints
     global robot_pose
     global waypoints
+    global operate
     robot_pose = [0.,0.,0.]
     manual_control = 0
 
@@ -759,6 +772,7 @@ def M5_Teleoperate(args):
 
 def M5_Navigation(args):
     # Initial global vars
+    global operate
     global waypoints
     global robot_pose
     global waypoints

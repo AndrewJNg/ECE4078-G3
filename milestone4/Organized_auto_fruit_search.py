@@ -194,6 +194,8 @@ class Operate:
         self.aruco_img = np.zeros([240,320,3], dtype=np.uint8)
         self.bg = pygame.image.load('pics/gui_mask.jpg')
 
+        self.scale = 0
+
 
     # wheel control
     """def control(self):       
@@ -255,6 +257,7 @@ class Operate:
         scale = np.loadtxt(fileS, delimiter=',')
         if ip == 'localhost':
             scale /= 2
+        self.scale = scale
         fileB = "{}baseline.txt".format(datadir)  
         baseline = np.loadtxt(fileB, delimiter=',')
         robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
