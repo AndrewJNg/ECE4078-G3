@@ -101,7 +101,7 @@ class Operate:
 
     # SLAM with ARUCO markers       
     def update_slam(self, drive_meas):
-        lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
+        lms, self.aruco_img,bbox = self.aruco_det.detect_marker_positions(cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB))
         if self.request_recover_robot:
             is_success = self.ekf.recover_from_pause(lms)
             if is_success:
@@ -120,18 +120,13 @@ class Operate:
     def detect_target(self):
         if self.command['inference'] and self.detector is not None:
             
-            # need to convert the colour before passing to YOLO
-            yolo_input_img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
-
+            yolo_input_img = self.img
             self.detector_output, self.network_vis = self.detector.detect_single_image(yolo_input_img)
-
-            # covert the colour back for display purpose
-            self.network_vis = cv2.cvtColor(self.network_vis, cv2.COLOR_RGB2BGR)
-
-            # self.command['inference'] = False     # uncomment this if you do not want to continuously predict
+            
+            self.command['inference'] = False     # uncomment this if you do not want to continuously predict
             self.file_output = (yolo_input_img, self.ekf)
-
-            # self.notification = f'{len(self.detector_output)} target type(s) detected'
+            self.network_vis = cv2.cvtColor(self.network_vis, cv2.COLOR_BGR2RGB)
+            self.notification = f'{len(self.detector_output)} target type(s) detected'
 
     # save raw images taken by the camera
     def save_image(self):
@@ -236,18 +231,24 @@ class Operate:
     # keyboard teleoperation        
     def update_keyboard(self):
         for event in pygame.event.get():
+            ########### replace with your M1 codes ###########
             # drive forward
             if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-                self.command['motion'] = [2,0]
+                self.command['motion'] = [3, 0]
+                pass # TODO: replace with your code to make the robot drive forward
             # drive backward
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-                self.command['motion'] = [-2,0]  
+                self.command['motion'] = [-3, 0]
+                pass # TODO: replace with your code to make the robot drive backward
             # turn left
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                self.command['motion'] = [0,2]
+                self.command['motion'] = [0, 3]
+                pass # TODO: replace with your code to make the robot turn left
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-                self.command['motion'] = [0,-2]
+                self.command['motion'] = [0, -3]
+                pass # TODO: replace with your code to make the robot turn right
+            ####################################################
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.command['motion'] = [0, 0]
@@ -307,7 +308,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", metavar='', type=str, default='localhost')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.3')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
@@ -322,7 +323,7 @@ if __name__ == "__main__":
     
     width, height = 700, 660
     canvas = pygame.display.set_mode((width, height))
-    pygame.display.set_caption('ECE4078 2021 Lab')
+    pygame.display.set_caption('ECE4078 2023 Lab')
     pygame.display.set_icon(pygame.image.load('pics/8bit/pibot5.png'))
     canvas.fill((0, 0, 0))
     splash = pygame.image.load('pics/loading.png')
