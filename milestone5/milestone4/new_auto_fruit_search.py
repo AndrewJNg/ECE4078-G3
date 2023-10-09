@@ -160,7 +160,7 @@ def estimate_position():
 
 
 class Operate:
-    def __init__(self):
+    def __init__(self, manual_control):
         # initialise data parameters
         self.pibot = Alphabot(args.ip, args.port)        
         
@@ -192,6 +192,8 @@ class Operate:
         self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.aruco_img = np.zeros([240,320,3], dtype=np.uint8)
         self.bg = pygame.image.load('pics/gui_mask.jpg')
+        # manual teleoperation
+        self.manual_control = manual_control
 
 
     # wheel control
@@ -319,21 +321,22 @@ class Operate:
     # keyboard teleoperation        
     def update_keyboard(self):
         for event in pygame.event.get():
-            # drive forward
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-                self.command['motion'] = [2,0]
-            # drive backward
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-                self.command['motion'] = [-2,0]  
-            # turn left
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                self.command['motion'] = [0,2]
-            # drive right
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-                self.command['motion'] = [0,-2]
-            # stop
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                self.command['motion'] = [0, 0]
+            if self.manual_control:
+                # drive forward
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
+                    self.command['motion'] = [2,0]
+                # drive backward
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
+                    self.command['motion'] = [-2,0]  
+                # turn left
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
+                    self.command['motion'] = [0,2]
+                # drive right
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
+                    self.command['motion'] = [0,-2]
+                # stop
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                    self.command['motion'] = [0, 0]
             # # save image
             # elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
             #     self.command['save_image'] = True
@@ -341,7 +344,7 @@ class Operate:
             # elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
             #     self.command['output'] = True
             # reset SLAM map
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 if self.double_reset_comfirm == 0:
                     self.notification = 'Press again to confirm CLEAR MAP'
                     self.double_reset_comfirm +=1
@@ -666,7 +669,10 @@ def intInput(msg):
             continue
     return value
 
-def M4_L1():
+def M4_L1(args):
+    keyboard_control = 0
+    operate = Operate(args, keyboard_control)
+    operate.init_ekf(args.calib_dir, args.ip)
     while True:
         try:
             print()
@@ -678,7 +684,10 @@ def M4_L1():
         except:
             print("enter again")
     
-def M4_L2():
+def M4_L2(args):
+    keyboard_control = 0
+    operate = Operate(args, keyboard_control)
+    operate.init_ekf(args.calib_dir, args.ip)
     for waypoint_progress in range(3):
         global waypoints
         global robot_pose
@@ -692,7 +701,7 @@ def M4_L2():
         else: 
             current_start_pos = waypoints[waypoint_progress-1]
         path = pathFind.main(current_start_pos, current_waypoint,[])
-        path.append(path[-1]) # NEW Added last sub-waypoint again
+        path.append(path[-1]) # Added last sub-waypoint again
         print(path)
 
         # print("localising")
@@ -723,9 +732,28 @@ def M4_L2():
         print(f"###################################\nVisited Fruit {waypoint_progress+1}")
 
 def M5_Teleoperate(args):
-    pass
+    keyboard_control = 1
+    operate = Operate(args, keyboard_control)
+    operate.init_ekf(args.calib_dir, args.ip)
+    
+    # To be finished
+    print("WARNING: Not finished")
+    while start:
+        operate.update_keyboard()
+        operate.take_pic()
+        drive_meas = operate.control()
+        operate.update_slam(drive_meas)
+        operate.record_data()
+        operate.save_image()
+        operate.detect_target()
+        # visualise
+        operate.draw(canvas)
+        pygame.display.update()
 
 def M5_Navigation(args):
+    keyboard_control = 0
+    operate = Operate(args, keyboard_control)
+    operate.init_ekf(args.calib_dir, args.ip)
     # read from map
     if args.groundtruth:
         print('Reading from ground truth')
@@ -782,23 +810,19 @@ if __name__ == "__main__":
     args.ckpt = "network/scripts/model/yolov8_model_best.pt"
     yolov = Detector(args.ckpt)
 
-    operate = Operate(args)
-    operate.init_ekf(args.calib_dir, args.ip)
-
     # Initiate UI
     initiate_UI()
-    operate = Operate()
 
-    # Choosing between operation modes
+    # Prompt input and execute stated operation mode
     while True:
         milestone = intInput('Milestone __ ?\nChoose [4/5]: ')
         if milestone == 4:
             while True:
                 u_input = intInput('Milestone 4\n1. L1\n2. L2\n[1/2]: ')
                 if u_input == 1:
-                    M4_L1()
+                    M4_L1(args)
                 elif u_input ==2:
-                    M4_L2()
+                    M4_L2(args)
                 else:
                     print("Input ERROR: Input does not match with choices given. Try again:")
         elif milestone == 5:
@@ -806,7 +830,7 @@ if __name__ == "__main__":
                 u_input = intInput('Milestone 5\nChoose 1. Teleoperate\n2. Autonomous navigation\n[1/2]: ')
                 if u_input == 1:
                     M5_Teleoperate(args)
-                elif u_input ==2:
+                elif u_input == 2:
                     M5_Navigation(args)
                 else:
                     print("Input ERROR: Input does not match with choices given. Try again:")
