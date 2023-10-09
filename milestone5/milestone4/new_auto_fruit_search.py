@@ -657,6 +657,15 @@ def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, tr
 
     return point_3d_world
 
+def intInput(msg):
+    while True:
+        try:
+            value = input(msg)
+            break
+        except ValueError:
+            continue
+    return value
+
 def M4_L1():
     while True:
         try:
@@ -671,7 +680,8 @@ def M4_L1():
     
 def M4_L2():
     for waypoint_progress in range(3):
-        # global waypoint
+        global waypoints
+        global robot_pose
         # Extract current waypoint
         # print(waypoints)
         current_waypoint = waypoints[waypoint_progress]
@@ -779,8 +789,30 @@ if __name__ == "__main__":
     initiate_UI()
     operate = Operate()
 
-    
-
+    # Choosing between operation modes
+    while True:
+        milestone = intInput('Milestone __ ?\nChoose [4/5]: ')
+        if milestone == 4:
+            while True:
+                u_input = intInput('Milestone 4\n1. L1\n2. L2\n[1/2]: ')
+                if u_input == 1:
+                    M4_L1()
+                elif u_input ==2:
+                    M4_L2()
+                else:
+                    print("Input ERROR: Input does not match with choices given. Try again:")
+        elif milestone == 5:
+            while True:
+                u_input = intInput('Milestone 5\nChoose 1. Teleoperate\n2. Autonomous navigation\n[1/2]: ')
+                if u_input == 1:
+                    M5_Teleoperate(args)
+                elif u_input ==2:
+                    M5_Navigation(args)
+                else:
+                    print("Input ERROR: Input does not match with choices given. Try again:")
+        else:
+            print("Input ERROR: Input does not match with choices given. Try again:")
+            
     
 
 
