@@ -329,6 +329,17 @@ def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, tr
     point_3d_world = np.dot(rotation_matrix, point_3d_camera) + translation_vector
 
     return point_3d_world
+
+def angleToPulse(angle):
+
+    #calibration
+    xp= [-90*np.pi/180,-45*np.pi/180,0*np.pi/180,45*np.pi/180,90*np.pi/180]
+    yp= [495,900,1360,1800,2350]
+    
+    pulse = int(np.interp(angle,xp,yp))
+    print(pulse)
+    return pulse
+
 ########################################################################################################
 # Waypoint navigation
 # the robot automatically drives to a given [x,y] coordinate
@@ -401,7 +412,7 @@ def robot_straight(robot_to_waypoint_distance=0,wheel_vel_lin=30,wheel_vel_ang =
 
 ########################################################################################################
 
-def get_robot_pose(drive_meas):
+def get_robot_pose(drive_meas,servo_theta=0):
 ####################################################
     ## method 1: open loop position 
     '''
@@ -422,7 +433,7 @@ def get_robot_pose(drive_meas):
     global robot_pose
     global landmarks # NEW Added
     landmarks, detector_output = take_and_analyse_picture()
-    ekf.predict(drive_meas)
+    ekf.predict(drive_meas,servo_theta=servo_theta)
     ekf.update(landmarks) 
 
     robot_pose = ekf.robot.state.reshape(-1)
@@ -452,6 +463,66 @@ def take_and_analyse_picture():
 ####################################################################################################
 def localize(waypoint): # turn and call get_robot_pose
     global robot_pose
+    
+    '''
+    while True:
+        # ppi.set_buzzer(True)
+        ppi.set_servo(500)
+        time.sleep(2)
+        ppi.set_servo(1000)
+        time.sleep(2)
+        ppi.set_servo(1500)
+        time.sleep(2)
+        ppi.set_servo(2000)
+        time.sleep(2)
+        # ppi.set_buzzer(False)
+        ppi.set_servo(2500)
+        time.sleep(2)
+    '''
+    # print("\nLocalising Now")
+
+    lv,rv=ppi.set_velocity([0, 0], turning_tick=30, time=0.8) # immediate stop with small delay
+    drive_meas = measure.Drive(lv,rv,0.8)
+
+    # look right
+    ppi.set_servo(angleToPulse(-90*np.pi/180))
+    time.sleep(0.5)
+    get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
+    time.sleep(2)
+    
+    # look 45 degree right
+    ppi.set_servo(angleToPulse(-45*np.pi/180))
+    time.sleep(0.5)
+    get_robot_pose(drive_meas,servo_theta=+45*np.pi/180)
+    time.sleep(2)
+    
+    # look center
+    ppi.set_servo(angleToPulse(0*np.pi/180))
+    time.sleep(0.5)
+    get_robot_pose(drive_meas,servo_theta=+45*np.pi/180)
+    time.sleep(2)
+    
+    # look 45 degree left
+    ppi.set_servo(angleToPulse(+45*np.pi/180))
+    time.sleep(0.5)
+    get_robot_pose(drive_meas,servo_theta=+45*np.pi/180)
+    time.sleep(2)
+
+    # look left
+    ppi.set_servo(angleToPulse(+90*np.pi/180))
+    time.sleep(0.5)
+    get_robot_pose(drive_meas,servo_theta=+45*np.pi/180)
+    time.sleep(2)
+    
+    # look back at center
+    ppi.set_servo(angleToPulse(0*np.pi/180))
+    time.sleep(0.5)
+    get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
+    time.sleep(2)
+    
+    
+
+    '''
     # baseline = 11.6e-2
     turn_angle = 2*np.pi/10
     wheel_vel_ang = 10
@@ -478,7 +549,7 @@ def localize(waypoint): # turn and call get_robot_pose
         
     # print(f"Pose after localised : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
     # print("Finished localising")
-
+    '''
 
 ####################################################################################################
 # main loop
@@ -527,6 +598,7 @@ if __name__ == "__main__":
     robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
     aruco_det = aruco.aruco_detector(robot, marker_length = 0.06)
     ekf = EKF(robot)
+    
 
     landmarks = []
     for i,landmark in enumerate(aruco_true_pos):
@@ -551,11 +623,25 @@ if __name__ == "__main__":
 ####################################################
     global robot_pose
     robot_pose = [0.,0.,0.]
-    ppi.set_velocity([0, 0]) # stop with delay
     pygame.display.update()
-    
+    # while True:
+    #     try:
+    #         print()
+    #         print("next")
+    #         x = input("input, pulse: ")
+    #         # drive_to_point(sub_waypoint)
+    #         pygame.display.update()
+    #         ppi.set_servo(int(x))
+    #     except:
+    #         if(str(x)=='z' or str(y) =='z'):
+    #             break
+    #         print("enter again")
+    #     pygame.display.update()
 ########################################   A* CODE INTEGRATED ##################################################
-    # '''
+    localize([0.,0.])
+    localize([0.,0.])
+    localize([0.,0.])
+    '''
     waypoints = wp.generateWaypoints(search_list)
     
     for waypoint_progress in range(3):
@@ -581,7 +667,7 @@ if __name__ == "__main__":
         print(f"Visited Fruit {waypoint_progress+1}")
         print(f"######################################################################")
         ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
-    # '''
+    '''
 
 
 

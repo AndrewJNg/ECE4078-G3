@@ -13,23 +13,26 @@ class Robot:
         self.camera_matrix = camera_matrix  # Matrix of the focal lengths and camera centre
         self.camera_dist = camera_dist  # Distortion coefficients
     
-    def drive(self, drive_meas):
+    def drive(self, drive_meas,servo_theta=0):
         # left_speed and right_speed are the speeds in ticks/s of the left and right wheels.
         # dt is the length of time to drive for
+        if(servo_theta==0):
+            # Compute the linear and angular velocity
+            linear_velocity, angular_velocity = self.convert_wheel_speeds(drive_meas.left_speed, drive_meas.right_speed)
 
-        # Compute the linear and angular velocity
-        linear_velocity, angular_velocity = self.convert_wheel_speeds(drive_meas.left_speed, drive_meas.right_speed)
-
-        # Apply the velocities
-        dt = drive_meas.dt
-        if angular_velocity == 0:
-            self.state[0] += np.cos(self.state[2]) * linear_velocity * dt
-            self.state[1] += np.sin(self.state[2]) * linear_velocity * dt
+            # Apply the velocities
+            dt = drive_meas.dt
+            if angular_velocity == 0:
+                self.state[0] += np.cos(self.state[2]) * linear_velocity * dt
+                self.state[1] += np.sin(self.state[2]) * linear_velocity * dt
+            else:
+                th = self.state[2]
+                self.state[0] += linear_velocity / angular_velocity * (np.sin(th+dt*angular_velocity) - np.sin(th))
+                self.state[1] += -linear_velocity / angular_velocity * (np.cos(th+dt*angular_velocity) - np.cos(th))
+                self.state[2] += dt*angular_velocity
         else:
-            th = self.state[2]
-            self.state[0] += linear_velocity / angular_velocity * (np.sin(th+dt*angular_velocity) - np.sin(th))
-            self.state[1] += -linear_velocity / angular_velocity * (np.cos(th+dt*angular_velocity) - np.cos(th))
-            self.state[2] += dt*angular_velocity
+            self.state[2] += servo_theta
+
 
     def measure(self, markers, idx_list):
         # Markers are 2d landmarks in a 2xn structure where there are n landmarks.
