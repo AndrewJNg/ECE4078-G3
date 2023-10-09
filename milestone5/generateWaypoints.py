@@ -207,7 +207,7 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
     tolerance = 0.2     # distance when robot will take picture from fruit
 
     # For debugging, to run independently
-    debug = 1
+    debug = 0
     if debug:
         groundtruth = 1
         if groundtruth == 1:
