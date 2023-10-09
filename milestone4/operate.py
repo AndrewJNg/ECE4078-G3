@@ -79,6 +79,7 @@ class Operate:
             self.detector = Detector(args.ckpt)
             self.network_vis = np.ones((240, 320,3))* 100
         self.bg = pygame.image.load('pics/gui_mask.jpg')
+        self.scale = 0.0
 
     # wheel control
     def control(self):       
@@ -152,6 +153,7 @@ class Operate:
         dist_coeffs = np.loadtxt(fileD, delimiter=',')
         fileS = "{}scale.txt".format(datadir)
         scale = np.loadtxt(fileS, delimiter=',')
+        self.scale = scale
         if ip == 'localhost':
             scale /= 2
         fileB = "{}baseline.txt".format(datadir)  

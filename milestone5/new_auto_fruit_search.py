@@ -160,7 +160,7 @@ def estimate_position():
 
 
 class Operate:
-    def __init__(self, manual_control):
+    def __init__(self, args, manual_control):
         # initialise data parameters
         self.pibot = Alphabot(args.ip, args.port)        
         
@@ -194,7 +194,9 @@ class Operate:
         self.bg = pygame.image.load('pics/gui_mask.jpg')
         # manual teleoperation
         self.manual_control = manual_control
-
+        # servo
+        pulse = angleToPulse(0)
+        self.pibot.set_servo(pulse)
 
     # wheel control
     """def control(self):       
@@ -389,6 +391,7 @@ class Operate:
             sys.exit()
 
     def drive_to_point(self, waypoint):
+        global robot_pose
         # rotate robot to turn towards the waypoint
         robot_to_waypoint_angle = np.arctan2(waypoint[1]-robot_pose[1],waypoint[0]-robot_pose[0]) # Measured from x-axis (theta=0)
         turn_angle = robot_to_waypoint_angle - robot_pose[2]
@@ -470,50 +473,32 @@ class Operate:
         print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
 
     
-    def localize(self, waypoint): # turn and call get_robot_pose
-        global robot_pose
-        # baseline = 11.6e-2
-        turn_angle = 2*np.pi/10
-        wheel_vel_ang = 10
-        turn_time = turn_angle * ((baseline/2)/(self.scale*wheel_vel_ang))
-        robot_pose_previous = robot_pose
-        print("\nLocalising Now")
-        turn_count = 0
-        latest_pose = np.zeros((0,3))
-        aruco_3_skip_flag = 0
-        while turn_count<10:
-            lv,rv = self.pibot.set_velocity([0, 1], turning_tick=wheel_vel_ang, time=turn_time)
-            turning_drive_meas = measure.Drive(lv,rv,turn_time)
-            self.pibot.set_velocity([0, 0], turning_tick=wheel_vel_ang, time=0.8) # immediate stop with small delay
-            robot_pose, lms = self.get_robot_pose(turning_drive_meas)
-            # visualise
-            operate.draw(canvas)
-            pygame.display.update()
-            print(turning_drive_meas)
-            
-            # if lms>2:
-            #     aruco_3_skip_flag = 1
-            #     break
-            ##########################################
-            # Save robot poses and aruco markers seen in an array, then choose latest 2 aruco seen position, if available
-            latest_pose = np.append(latest_pose,[[robot_pose[0],robot_pose[1],lms]],0)
-            ##########################################
-            turn_count += 1
-            print(turn_count)
-            robot_pose_previous = robot_pose
-            # rms_error = np.sqrt((waypoint[0] - robot_pose[0])**2 + (waypoint[1] - robot_pose[1])**2)
-            # print("rms_error: ",rms_error)
-            # if (rms_error<0.2):
-            #     continue_turning = 0
-            
-            robot_pose[2] = (robot_pose[2]) % (2*np.pi) 
-            robot_pose[2] = robot_pose[2]-2*np.pi if robot_pose[2]>np.pi else robot_pose[2]
-            print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
-            
-        print(f"Pose after localised : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
-        print("Finished localising")
+    def localize():
+        pass
 
+    def clamp_angle(rad_angle=0, min_value=-np.pi, max_value=np.pi):
+        """
+        Restrict angle to the range [min, max]
+        :param rad_angle: angle in radians
+        :param min_value: min angle value
+        :param max_value: max angle value
+        """
+
+        if min_value > 0:
+            min_value *= -1
+
+        angle = (rad_angle + max_value) % (2 * np.pi) + min_value
+
+        return angle
+
+def angleToPulse(angle):
+    #calibration
+    xp= [-90*np.pi/180,-45*np.pi/180,0*np.pi/180,45*np.pi/180,90*np.pi/180]
+    yp= [495,900,1360,1800,2350]
     
+    pulse = int(np.interp(angle,xp,yp))
+
+    return pulse
 
 def initiate_UI():
     pygame.font.init() 
@@ -663,7 +648,7 @@ def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, tr
 def intInput(msg):
     while True:
         try:
-            value = input(msg)
+            value = int(input(msg))
             break
         except ValueError:
             continue
@@ -685,12 +670,33 @@ def M4_L1(args):
             print("enter again")
     
 def M4_L2(args):
+    # Initial global vars
+    global waypoints
+    global robot_pose
+    global waypoints
+    robot_pose = [0.,0.,0.]
     manual_control = 0
+
+    # Initialize classes
     operate = Operate(args, manual_control)
     operate.init_ekf(args.calib_dir, args.ip)
+    # Read from map
+    if args.groundtruth:
+        print('Reading from ground truth')
+        fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.truthmap)
+    else:
+        print('Reading from estimated SLAM map')
+        fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map) 
+        
+    # Read search list
+    search_list = read_search_list()
+    print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
+
+    # Generate waypoints
+    waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos)
+
+    # Main algorithm
     for waypoint_progress in range(3):
-        global waypoints
-        global robot_pose
         # Extract current waypoint
         # print(waypoints)
         current_waypoint = waypoints[waypoint_progress]
@@ -732,6 +738,7 @@ def M4_L2(args):
         print(f"###################################\nVisited Fruit {waypoint_progress+1}")
 
 def M5_Teleoperate(args):
+    # Initialize classes
     manual_control = 1
     operate = Operate(args, manual_control)
     operate.init_ekf(args.calib_dir, args.ip)
@@ -751,7 +758,14 @@ def M5_Teleoperate(args):
         pygame.display.update()
 
 def M5_Navigation(args):
+    # Initial global vars
+    global waypoints
+    global robot_pose
+    global waypoints
+    robot_pose = [0.,0.,0.]
     manual_control = 0
+
+    # Initialize classes
     operate = Operate(args, manual_control)
     operate.init_ekf(args.calib_dir, args.ip)
     # read from map
@@ -760,29 +774,26 @@ def M5_Navigation(args):
         fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.truthmap)
     else:
         print('Reading from estimated SLAM map')
-        fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)        
-    
+        fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map) 
+        
+    # Sead search list
+    search_list = read_search_list()
+    print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
+
+    # Add landmarks
     landmarks = []
     print(aruco_true_pos)
-    
     for i,landmark in enumerate(aruco_true_pos):
         measurement_landmark = measure.Marker(np.array([[landmark[0]],[landmark[1]]]),i+1)
         landmarks.append(measurement_landmark)
     print(landmarks)
     operate.ekf.add_landmarks(landmarks)
 
-    search_list = read_search_list()
-    print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
-
-    ####################################################################################################
-    global robot_pose
-    robot_pose = [0.,0.,0.]
-    operate.pibot.set_velocity([0, 0]) # stop with delay
-
-    ########################################   A* CODE INTEGRATED ######################################
-    global waypoints
+    # Generate waypoints
     waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos)
 
+    # Main algorithm
+    operate.pibot.set_velocity([0, 0]) # stop with delay
     for waypoint_progress in range(3):
         # Extract current waypoint
         # print(waypoints)
@@ -855,11 +866,13 @@ if __name__ == "__main__":
     initiate_UI()
 
     # Prompt input and execute stated operation mode
+    milestone = 4
+    u_input = 2
     while True:
-        milestone = intInput('Milestone __ ?\nChoose [4/5]: ')
+        # milestone = intInput('Milestone __ ?\nChoose [4/5]: ')
         if milestone == 4:
-            while True:
-                u_input = intInput('Milestone 4\n1. L1\n2. L2\n[1/2]: ')
+            while True: 
+                # u_input = intInput('Milestone 4\n1. L1\n2. L2\n[1/2]: ')
                 if u_input == 1:
                     M4_L1(args)
                 elif u_input ==2:
