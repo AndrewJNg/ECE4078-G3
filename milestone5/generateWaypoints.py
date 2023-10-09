@@ -57,13 +57,17 @@ def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
         for obstacle_idx, obstacle_pos in enumerate(obstacles_arr):
             x_o, y_o = obstacle_pos[0], obstacle_pos[1]
             for dir, pos in visit_pos_arr.items():
-                if x_o == pos[2] and y_o == pos[3]:
+                if (x_o == pos[2] and y_o == pos[3]) or (abs(pos[2]) == 1.6) or (abs(pos[3]) == 1.6):
                     # print('{} visit_pos clashes with obstacle {} at {} [{},{}]'.format(fruit_order[index], obstacle_idx, dir, pos[2],pos[3]))    # Debug
                     positions_to_remove.append(dir)
-        
+        print(visit_pos_arr)
+        print(visit_pos_arr['down'])
         # Remove the positions that clashed with obstacles
         for dir in positions_to_remove:
-            visit_pos_arr.pop(dir)
+            try: 
+                visit_pos_arr.pop(dir)
+            except:
+                continue
         # print(visit_pos_arr) # Debug
         # Calculate distance for each location
         dist_dic = {}
