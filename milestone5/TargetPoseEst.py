@@ -86,7 +86,7 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         ######### Replace with your codes #########
         # TODO: compute pose of the target based on bounding box info and robot's pose
 
-        camera_offset = 0.0 #2.0cm
+        camera_offset = 0.035 #3.5cm
         target_pose = {'x': 0.0, 'y': 0.0}
         distance = focal_length * true_height/box[3][0]
          

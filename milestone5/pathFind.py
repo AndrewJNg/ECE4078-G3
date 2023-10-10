@@ -199,6 +199,14 @@ def add_obstacle(grid, rows, coord):
     except:
         pass
 
+def add_boundary(grid, rows):
+    for x in range(-16, 18, 2):
+        for y in range(-16, 18, 2):
+            if x < -12 or x > 12 or y < -12 or y > 12:
+                [row, col] = groundtruth_to_grid(round(x/10,1),round(y/10,1),rows)
+                spot = grid[row][col]
+                spot.make_barrier()
+                
 def grid_to_coord(row,col,rows): # Grid to coordinate
 	x = round(3.2/rows,1)*row - 1.6
 	y = 1.6 - round(3.2/rows,1)*col 
@@ -255,7 +263,8 @@ def main(START, END, EXTRA):
     end = None
 
     read_groundtruth(grid, ROWS)
-
+    add_boundary(grid, ROWS)
+    
     # CHECK IF ANY EXTRA FRUIT
     if len(EXTRA) != 0:
         for fruit in EXTRA:
@@ -286,7 +295,10 @@ def main(START, END, EXTRA):
     path = algorithm(grid, start, end)
 
     # Reverse path
-    path = path[::-1]
+    try:
+        path = path[::-1]
+    except:
+        return 0
     # Add end point
     path.append(END)
 
@@ -299,8 +311,16 @@ def main(START, END, EXTRA):
     return path
 
 
+<<<<<<< HEAD
 # START = [0, 0]
 # END = [1.2, -0.4]
 # EXTRA = []
 # path = main(START, END, EXTRA)
 # print(path)
+=======
+START = [0, 0]
+END = [1.6, -0.4]
+EXTRA = []
+path = main(START, END, EXTRA)
+print(path)
+>>>>>>> origin/AndrewJNg-YolovM3_integration

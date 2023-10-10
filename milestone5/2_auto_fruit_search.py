@@ -362,7 +362,9 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     ### physical robot: robot would rotate by turn_angle amount
     """
     global baseline
-    if abs(turn_angle) <=1.6: # ~90deg
+    if abs(turn_angle) <=0.8: # <45deg
+        baseline = 12.5e-2
+    elif abs(turn_angle) <=1.6: # ~90deg
         baseline = 10.2e-2
 
     elif abs(turn_angle) <=3.2: # ~180deg
@@ -452,7 +454,15 @@ def get_robot_pose(drive_meas,servo_theta=0):
     landmarks, detector_output = take_and_analyse_picture()
     ekf.predict(drive_meas,servo_theta=servo_theta)
     # ekf.add_landmarks(landmarks) 
-    ekf.update(landmarks) 
+    ekf.update(landmarks)
+    # landmarks = []
+    # for i,landmark in enumerate(aruco_true_pos):
+    #     measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
+    #                                           tag = i+1,
+    #                                           covariance = (0.001*np.eye(2)))
+                                              
+    #     landmarks.append(measurement_landmark)
+    # ekf.update(landmarks) 
 
     robot_pose = ekf.robot.state.reshape(-1)
     # print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
@@ -580,7 +590,8 @@ if __name__ == "__main__":
         else: 
             current_start_pos = waypoints[waypoint_progress-1]
         path = pathFind.main(current_start_pos, current_waypoint,[])
-        # path.pop(0)
+        print(path)
+        path.pop(0)
         # path.pop(0)
         path.append(path[-1]) # NEW Added last sub-waypoint again
         localize([0,0])
