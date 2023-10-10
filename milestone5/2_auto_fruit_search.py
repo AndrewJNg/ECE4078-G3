@@ -453,7 +453,7 @@ def get_robot_pose(drive_meas,servo_theta=0):
     global landmarks # NEW Added
     landmarks, detector_output = take_and_analyse_picture()
     ekf.predict(drive_meas,servo_theta=servo_theta)
-    # ekf.add_landmarks(landmarks) 
+    ekf.add_landmarks(landmarks) 
     ekf.update(landmarks)
     # landmarks = []
     # for i,landmark in enumerate(aruco_true_pos):
@@ -475,7 +475,9 @@ def get_robot_pose(drive_meas,servo_theta=0):
 
 def localize(): # turn and call get_robot_pose
     global robot_pose
+    global landmarks
     
+    landmark_counter = 0
     lv,rv=ppi.set_velocity([0, 0], turning_tick=30, time=0.8) # immediate stop with small delay
     drive_meas = measure.Drive(lv,rv,0.8)
 
@@ -492,19 +494,17 @@ def localize(): # turn and call get_robot_pose
         current_angle+=increment_angle
         ppi.set_servo(angleToPulse(current_angle*np.pi/180))
         time.sleep(0.3)
-        get_robot_pose(drive_meas,servo_theta=increment_angle*np.pi/180)
+        _, landmarks = get_robot_pose(drive_meas,servo_theta=increment_angle*np.pi/180)
         time.sleep(0.2)
+        landmark_counter+=len(landmarks)
 
     # look back at center
     ppi.set_servo(angleToPulse(0*np.pi/180))
     time.sleep(0.3)
-    _, landmarks = get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
+    get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
     time.sleep(0.5)
-
-    if len(landmarks)>2:
-        return 1
-    else:
-        return 0
+    # print(f"Landmarks: {landmark_counter}")
+    return landmark_counter
     
 ################################################################### Main  ###################################################################
 # main loop
@@ -513,7 +513,7 @@ if __name__ == "__main__":
     # arguments for starting command
     parser = argparse.ArgumentParser("Fruit searching")
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
-    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.3')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.47')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     args, _ = parser.parse_known_args()
 
@@ -611,8 +611,9 @@ if __name__ == "__main__":
             print("target: "+str(sub_waypoint))
             drive_to_point(sub_waypoint)
             print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
-            if not localize(): # If seen markers not more than 2
-                print("Seen less than 2 landmarks during localize. Localize agian")
+            landmark_counter = localize()
+            if landmark_counter < 10: # If seen markers not more than 2
+                print(f"Seen less than 10 landmarks during localize ({landmark_counter}). Localize agian")
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
                 localize()
