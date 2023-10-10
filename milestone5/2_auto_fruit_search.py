@@ -473,7 +473,7 @@ def get_robot_pose(drive_meas,servo_theta=0):
 
     return robot_pose, landmarks
 
-def localize(waypoint): # turn and call get_robot_pose
+def localize(): # turn and call get_robot_pose
     global robot_pose
     
     lv,rv=ppi.set_velocity([0, 0], turning_tick=30, time=0.8) # immediate stop with small delay
@@ -590,13 +590,13 @@ if __name__ == "__main__":
         else: 
             current_start_pos = waypoints[waypoint_progress-1]
         path = pathFind.main(current_start_pos, current_waypoint,[])
-        print(path)
+        # print(path)
         path.pop(0)
         # path.pop(0)
         path.append(path[-1]) # NEW Added last sub-waypoint again
-        localize([0,0])
+        localize()
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-        localize([0,0])
+        localize()
 
         for i, sub_waypoint in enumerate(path, 3):
             # Drive to segmented waypoints
