@@ -26,8 +26,8 @@ def estimate_pose( camera_matrix, completed_img_dict):
     capsicum_dimensions = [0.073, 0.073, 0.088]
     target_dimensions.append(capsicum_dimensions)
 
-    target_list = ['redapple', 'greenapple', 'orange', 'mango', 'capsicum']
-    # target_list = [11, 12, 13, 14, 15]
+    # target_list = ['redapple', 'greenapple', 'orange', 'mango', 'capsicum']
+    target_list = [11, 12, 13, 14, 15]
 
     target_pose_dict = {}
     # for each target in each detection output, estimate its pose

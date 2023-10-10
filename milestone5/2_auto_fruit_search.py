@@ -9,7 +9,8 @@ import ast
 import argparse
 import time
 import math
-import TargetPoseEst
+import fruit_est as detect
+import generateWaypoints as wp
 
 # import neural network detector
 from network.scripts.detector import Detector # modified for yolov8
@@ -26,7 +27,6 @@ import shutil # python package for file operations
 sys.path.insert(0, "util")
 from util.pibot import Alphabot
 import util.measure as measure
-import generateWaypoints as wp
 import pathFind
 import pygame
 
@@ -396,13 +396,17 @@ def take_and_analyse_picture():
     
     img = ppi.get_image()
     landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    # detector_output, img_yolov = yolov.detect_single_image(img)
-    detector_output =0
     
+    # Append fruits to landmarks
+    target_est = detect.fruit_detect(yolov, camera_matrix, img, robot_pose)
+    if target_est:
+        for id, fruit_pos in target_est:
+            fruit_measurement = measure.Marker(fruit_pos, id)
+            landmarks.append(fruit_measurement)
     # cv2.imshow('Predict',  aruco_img)
     # cv2.waitKey(0)
 
-    return landmarks, detector_output
+    return landmarks
     # return landmarks, detector_output,aruco_corners
 
 def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
@@ -450,19 +454,11 @@ def get_robot_pose(drive_meas,servo_theta=0):
     ## method 2: Using SLAM through EKF filtering
     # '''
     global robot_pose
-    global landmarks # NEW Added
+    global landmarks
     landmarks, detector_output = take_and_analyse_picture()
     ekf.predict(drive_meas,servo_theta=servo_theta)
-    ekf.add_landmarks(landmarks) 
+    ekf.add_landmarks(landmarks)
     ekf.update(landmarks)
-    # landmarks = []
-    # for i,landmark in enumerate(aruco_true_pos):
-    #     measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
-    #                                           tag = i+1,
-    #                                           covariance = (0.001*np.eye(2)))
-                                              
-    #     landmarks.append(measurement_landmark)
-    # ekf.update(landmarks) 
 
     robot_pose = ekf.robot.state.reshape(-1)
     # print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
@@ -544,8 +540,9 @@ if __name__ == "__main__":
     baseline = np.loadtxt(fileB, delimiter=',')
 
     # neural network file location
-    # args.ckpt = "network/scripts/model/yolov8_model_best.pt"
-    # yolov = Detector(args.ckpt)
+    args.ckpt = "network/scripts/model/yolov8_model_best.pt"
+    global yolov
+    yolov = Detector(args.ckpt)
 
 ####################################################
     ## Set up all EKF using given values in true map
