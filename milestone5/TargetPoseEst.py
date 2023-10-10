@@ -11,6 +11,8 @@ from machinevisiontoolbox import Image
 import matplotlib.pyplot as plt
 import PIL
 
+
+## ignore for resnet only, i hope pls
 # use the machinevision toolbox to get the bounding box of the detected target(s) in an image
 def get_bounding_box(target_number, image_path):
     image = PIL.Image.open(image_path).resize((640,480), PIL.Image.Resampling.NEAREST)
@@ -26,6 +28,7 @@ def get_bounding_box(target_number, image_path):
     # plt.show()
     # assert len(blobs) == 1, "An image should contain only one object of each target type"
     return box
+################################################################################################################################
 
 # read in the list of detection results with bounding boxes and their matching robot pose info
 def get_image_info(base_dir, file_path, image_poses):
@@ -42,8 +45,8 @@ def get_image_info(base_dir, file_path, image_poses):
             try:
                 box = get_bounding_box(target_num, base_dir/file_path) # [x,y,width,height]
                 pose = image_poses[file_path] # [x, y, theta]
-                target_lst_box[target_num-1].append(box) # bouncing box of target
-                target_lst_pose[target_num-1].append(np.array(pose).reshape(3,)) # robot pose
+                target_lst_box[target_num-1].append(box) # bounding box of target     (x,y,width,height)
+                target_lst_pose[target_num-1].append(np.array(pose).reshape(3,)) # robot pose  (x,y,theta)
             except ZeroDivisionError:
                 pass
 
@@ -177,7 +180,9 @@ if __name__ == "__main__":
     camera_matrix = np.loadtxt(fileK, delimiter=',')
     base_dir = Path('./')
     
-    
+    ################################################################################################################
+    ## get all X,Y,theta coordinates of robot
+
     # a dictionary of all the saved detector outputs
     image_poses = {}
     with open(base_dir/'lab_output/images.txt') as fp:
@@ -185,10 +190,19 @@ if __name__ == "__main__":
             pose_dict = ast.literal_eval(line)
             image_poses[pose_dict['imgfname']] = pose_dict['pose']
     
+    print()
+    print("poses: ")
+    print(image_poses)
+    ################################################################################################################
+    # 
     # estimate pose of targets in each detector output
     target_map = {}        
     for file_path in image_poses.keys():
+        print()
+        print("img_dict: ")
         completed_img_dict = get_image_info(base_dir, file_path, image_poses)
+        
+        print(completed_img_dict)
         target_map[file_path] = estimate_pose(base_dir, camera_matrix, completed_img_dict)
 
     # merge the estimations of the targets so that there are only one estimate for each target type

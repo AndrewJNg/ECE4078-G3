@@ -586,7 +586,6 @@ if __name__ == "__main__":
     # localize([0.,0.])
     # '''
     waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos, log = 1)
-    localize([0,0])
     for waypoint_progress in range(3):
         current_waypoint = waypoints[waypoint_progress]
         if waypoint_progress == 0:
@@ -598,6 +597,7 @@ if __name__ == "__main__":
         path.pop(0)
         # path.pop(0)
         path.append(path[-1]) # NEW Added last sub-waypoint again
+        localize([0,0])
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
         localize([0,0])
 
@@ -609,8 +609,8 @@ if __name__ == "__main__":
             print("target: "+str(sub_waypoint))
             drive_to_point(sub_waypoint)
             print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
-            # if (i+1)%1 == 0:
-            localize(sub_waypoint)
+            if (i+1)%1 == 0:
+                localize(sub_waypoint)
         
 
         print(f"######################################################################")
