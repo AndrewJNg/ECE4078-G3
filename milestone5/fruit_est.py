@@ -9,7 +9,7 @@ from network.scripts.detector import Detector # modified for yolov8
 # import TargetPoseEst
 from pathlib import Path
 
-def estimate_pose(base_dir, camera_matrix, completed_img_dict):
+def estimate_pose( camera_matrix, completed_img_dict):
     camera_matrix = camera_matrix
     focal_length = camera_matrix[0][0]
     # actual sizes of targets [For the simulation models]
@@ -27,6 +27,7 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
     target_dimensions.append(capsicum_dimensions)
 
     target_list = ['redapple', 'greenapple', 'orange', 'mango', 'capsicum']
+    # target_list = [11, 12, 13, 14, 15]
 
     target_pose_dict = {}
     # for each target in each detection output, estimate its pose
@@ -50,35 +51,31 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         # print(target_pose_dict)
     return target_pose_dict
 
-
-if __name__ == "__main__":
+def fruit_detect(nn_model, camera_matrix, img, robot_pose):
+    # nn_model = Detector("network/scripts/model/yolov8_model_best.pt")
+    # img = np.array(Image.open('network/scripts/image_0.png'))
     
-    detc = Detector("network/scripts/model/yolov8_model_best.pt")
-    img = np.array(Image.open('network/scripts/image_0.png'))
-    
-    fileK = "{}intrinsic.txt".format('./calibration/param/')
-    camera_matrix = np.loadtxt(fileK, delimiter=',')
-    base_dir = Path('./')
+    # fileK = "{}intrinsic.txt".format('./calibration/param/')
+    # camera_matrix = np.loadtxt(fileK, delimiter=',')
 
-    detector_output, network_vis = detc.detect_single_image(img)
-    print(len(detector_output))
+    detector_output, network_vis = nn_model.detect_single_image(img)
+    # print(len(detector_output))
 
-    completed_img_dict ={}
+    completed_img_dict = {}
     for i in range(len(detector_output)):
         label = detector_output[i][0]
         box_temp = detector_output[i][1]
         
         box = [[box_temp[0]],[box_temp[1]],[box_temp[2]],[box_temp[3]]]
-        robot_coord = np.array([[-0.2   ],[0.4    ],[np.deg2rad(-90)]])
         
         completed_img_dict[int(label)] = {'target': np.array(box),
-                                   'robot': robot_coord}
+                                   'robot': robot_pose}
     # print()
     # print(completed_img_dict)
     
-    target_est = estimate_pose(base_dir, camera_matrix, completed_img_dict)
+    target_est = estimate_pose(camera_matrix, completed_img_dict)
     print("target_est: ")
     print(target_est)
-
-    imgplot = plt.imshow(network_vis)
-    plt.show()
+    return target_est
+    # imgplot = plt.imshow(network_vis)
+    # plt.show()
