@@ -299,8 +299,8 @@ def main(START, END, EXTRA):
     return path
 
 
-START = [0, 0]
-END = [1.2, -0.4]
-EXTRA = []
-path = main(START, END, EXTRA)
-print(path)
+# START = [0, 0]
+# END = [1.2, -0.4]
+# EXTRA = []
+# path = main(START, END, EXTRA)
+# print(path)

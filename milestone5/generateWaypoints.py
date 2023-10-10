@@ -76,8 +76,9 @@ def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
                 # Update min_dist
                 if dist < min_dist:
                     min_dir = dir
-                # Choose optimal visit_pos for non-diagonal visit_pos
-                final_visit_pos.append([visit_pos_arr[min_dir][0],visit_pos_arr[min_dir][1]])
+            # Choose optimal visit_pos for non-diagonal visit_pos
+            final_visit_pos.append([visit_pos_arr[min_dir][0],visit_pos_arr[min_dir][1]])
+            min_dir_arr.append(min_dir)
 
         else: # Take diagonal
             for dir, pos in diag_visit_pos_arr.items():
@@ -90,9 +91,10 @@ def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
                     min_dir = dir
             # Choose optimal visit_pos for diagonal visit_pos
             final_visit_pos.append([diag_visit_pos_arr[min_dir][0],diag_visit_pos_arr[min_dir][1]])
-
+            min_dir_arr.append(min_dir)
+    
     # print('\nWhere robot is relative to fruit: {}\n'.format(min_dir_arr))   # Debug
-    return final_visit_pos
+    return final_visit_pos, min_dir_arr
 
 # Based on search order, generate fruit_arr and obstacles_arr containing fruit position
 def getFruitArr(search_list, fruit_list, fruit_true_pos, obstacles_arr):
@@ -201,13 +203,13 @@ def getFromFile(fname):
     return search_list, fruits_list, fruits_true_pos, aruco_true_pos
 
 # Main function
-def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_true_pos={}):
+def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_true_pos={}, log = 0):
     # Define params:
     start_pos = [0,0]   # start pos
     tolerance = 0.2     # distance when robot will take picture from fruit
 
     # For debugging, to run independently
-    debug = 0
+    debug = 1
     if debug:
         groundtruth = 1
         if groundtruth == 1:
@@ -223,14 +225,18 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
     search_fruits, obstacles_arr = getFruitArr(search_list, fruits_list, fruits_true_pos, aruco_true_pos)
     
     # Debug
-    print(f'search_fruits:\n{search_fruits}') 
-    print(f'obstacles_arr:\n{obstacles_arr}')
-    waypoints = getPath(tolerance, start_pos, search_fruits, obstacles_arr, search_list)
+    # print(f'search_fruits:\n{search_fruits}') 
+    # print(f'obstacles_arr:\n{obstacles_arr}')
+
+    waypoints, min_dir_arr = getPath(tolerance, start_pos, search_fruits, obstacles_arr, search_list)
 
     # Code For debugging
-    # print("\nFinal path:")
-    # print(waypoints)
-    # print("\n\n")
+    
+    if (log == 1):
+        print("\nVisit Fruit Pos:")
+        print(waypoints)
+        print(f'Location: {min_dir_arr}\n')
+
 
     return waypoints
 

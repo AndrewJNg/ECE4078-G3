@@ -280,7 +280,7 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
     print("Search order:")
     n_fruit = 1
     for fruit in search_list:
-        for i in range(3):
+        for i in range(len(fruit_list)):
             if fruit == fruit_list[i]:
                 print('{}) {} at [{}, {}]'.format(n_fruit,
                                                   fruit,
@@ -498,7 +498,7 @@ if __name__ == "__main__":
     # arguments for starting command
     parser = argparse.ArgumentParser("Fruit searching")
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
-    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.209')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.3')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     args, _ = parser.parse_known_args()
 
@@ -572,8 +572,7 @@ if __name__ == "__main__":
     # localize([0.,0.])
     # localize([0.,0.])
     # '''
-    waypoints = wp.generateWaypoints(search_list)
-    
+    waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos, log = 1)
     for waypoint_progress in range(3):
         current_waypoint = waypoints[waypoint_progress]
         if waypoint_progress == 0:
