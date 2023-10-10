@@ -14,17 +14,13 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
     focal_length = camera_matrix[0][0]
     # actual sizes of targets [For the simulation models]
     # You need to replace these values for the real world objects
-    target_dimensions = []
-    redapple_dimensions = [0.074, 0.074, 0.087]
-    target_dimensions.append(redapple_dimensions)
-    greenapple_dimensions = [0.081, 0.081, 0.067]
-    target_dimensions.append(greenapple_dimensions)
-    orange_dimensions = [0.075, 0.075, 0.072]
-    target_dimensions.append(orange_dimensions)
-    mango_dimensions = [0.113, 0.067, 0.058] # measurements when laying down
-    target_dimensions.append(mango_dimensions)
-    capsicum_dimensions = [0.073, 0.073, 0.088]
-    target_dimensions.append(capsicum_dimensions)
+    target_dimensions = [
+        [0.074, 0.074, 0.087],  # Red Apple
+        [0.081, 0.081, 0.067],  # Green Apple
+        [0.075, 0.075, 0.072],  # Orange
+        [0.113, 0.067, 0.058],  # Mango
+        [0.073, 0.073, 0.088],  # Capsicum
+    ]
 
     target_list = ['redapple', 'greenapple', 'orange', 'mango', 'capsicum']
 
@@ -54,7 +50,7 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
 if __name__ == "__main__":
     
     detc = Detector("network/scripts/model/yolov8_model_best.pt")
-    img = np.array(Image.open('network/scripts/image_0.png'))
+    img = np.array(Image.open('network/scripts/image_1.png'))
     
     fileK = "{}intrinsic.txt".format('./calibration/param/')
     camera_matrix = np.loadtxt(fileK, delimiter=',')
