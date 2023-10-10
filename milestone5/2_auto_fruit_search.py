@@ -498,8 +498,13 @@ def localize(): # turn and call get_robot_pose
     # look back at center
     ppi.set_servo(angleToPulse(0*np.pi/180))
     time.sleep(0.3)
-    get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
+    _, landmarks = get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
     time.sleep(0.5)
+
+    if len(landmarks)>2:
+        return 1
+    else:
+        return 0
     
 ################################################################### Main  ###################################################################
 # main loop
@@ -583,6 +588,7 @@ if __name__ == "__main__":
     # localize([0.,0.])
     # '''
     waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos, log = 1)
+    localize()
     for waypoint_progress in range(3):
         current_waypoint = waypoints[waypoint_progress]
         if waypoint_progress == 0:
@@ -594,7 +600,6 @@ if __name__ == "__main__":
         path.pop(0)
         # path.pop(0)
         path.append(path[-1]) # NEW Added last sub-waypoint again
-        localize()
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
         localize()
 
@@ -606,9 +611,10 @@ if __name__ == "__main__":
             print("target: "+str(sub_waypoint))
             drive_to_point(sub_waypoint)
             print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
-            if (i+1)%1 == 0:
-                localize(sub_waypoint)
-        
+            if not localize(): # If seen markers not more than 2
+                localize()
+            else:
+                pass       
 
         print(f"######################################################################")
         print(f"Visited Fruit {waypoint_progress+1}")
