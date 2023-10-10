@@ -211,12 +211,7 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
 
     debug = 0
     # For debugging, to run independently
-<<<<<<< HEAD
     if debug and search_list == {}:
-=======
-    debug = 0
-    if debug:
->>>>>>> origin/HongJye
         groundtruth = 1
         if groundtruth == 1:
             fname = 'M4_true_map.txt'
