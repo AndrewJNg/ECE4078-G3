@@ -584,6 +584,7 @@ if __name__ == "__main__":
     # '''
     waypoints = wp.generateWaypoints(search_list)
     
+    # print(waypoints)
     for waypoint_progress in range(3):
         current_waypoint = waypoints[waypoint_progress]
         if waypoint_progress == 0:
@@ -591,7 +592,8 @@ if __name__ == "__main__":
         else: 
             current_start_pos = waypoints[waypoint_progress-1]
         path = pathFind.main(current_start_pos, current_waypoint,[])
-        # path.pop(0)
+        print(path)
+        path.pop(0)
         # path.pop(0)
         path.append(path[-1]) # NEW Added last sub-waypoint again
         localize([0,0])
