@@ -612,6 +612,9 @@ if __name__ == "__main__":
             drive_to_point(sub_waypoint)
             print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
             if not localize(): # If seen markers not more than 2
+                print("Seen less than 2 landmarks during localize. Localize agian")
+                # Turn 180 deg and localize
+                robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
                 localize()
             else:
                 pass       
