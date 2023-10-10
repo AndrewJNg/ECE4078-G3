@@ -65,7 +65,7 @@ if __name__ == "__main__":
         box_temp = detector_output[i][1]
         
         box = [[box_temp[0]],[box_temp[1]],[box_temp[2]],[box_temp[3]]]
-        robot_coord = np.array([[0.   ],[0.    ],[0]])
+        robot_coord = np.array([[-0.2   ],[0.4    ],[np.deg2rad(-90)]])
         
         completed_img_dict[int(label)] = {'target': np.array(box),
                                    'robot': robot_coord}
