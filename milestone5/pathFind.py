@@ -311,16 +311,8 @@ def main(START, END, EXTRA):
     return path
 
 
-<<<<<<< HEAD
 # START = [0, 0]
 # END = [1.2, -0.4]
 # EXTRA = []
 # path = main(START, END, EXTRA)
 # print(path)
-=======
-START = [0, 0]
-END = [1.6, -0.4]
-EXTRA = []
-path = main(START, END, EXTRA)
-print(path)
->>>>>>> origin/AndrewJNg-YolovM3_integration

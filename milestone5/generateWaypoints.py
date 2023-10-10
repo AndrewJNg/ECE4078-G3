@@ -26,6 +26,7 @@ def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
     final_visit_pos = []
     min_dir_arr  = [] # TODO comment
     for index, currentFruit in enumerate(fruits_arr):
+        # print(f'\n{fruit_order[index]}') # Debug
         # Get start position
         if index-1 >= 0:
             x_i, y_i = fruits_arr[index-1][0], fruits_arr[index-1][1]
@@ -66,17 +67,18 @@ def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
                 continue
         # print(visit_pos_arr) # Debug
         # Calculate distance for each location, prioritizing non-diagonal visit_pos
-        dist_dic = {}
         min_dist = 10000
         if len(visit_pos_arr) != 0: # Prioritize non-diagonal visit_pos
             for dir, pos in visit_pos_arr.items():
                 x_f, y_f = pos[0], pos[1]
                 dist = np.hypot(x_f-x_i, y_f-y_i)
-                dist_dic[dir] = dist
+                print(f'{dir}: {dist}')
                 # Update min_dist
                 if dist < min_dist:
                     min_dir = dir
+                    min_dist = dist
             # Choose optimal visit_pos for non-diagonal visit_pos
+            # print(f'Min direction: {min_dir}')
             final_visit_pos.append([visit_pos_arr[min_dir][0],visit_pos_arr[min_dir][1]])
             min_dir_arr.append(min_dir)
 
@@ -84,7 +86,6 @@ def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
             for dir, pos in diag_visit_pos_arr.items():
                 x_f, y_f = pos[0], pos[1]
                 dist = np.hypot(x_f-x_i, y_f-y_i)
-                dist_dic[dir] = dist
 
                 # Update min_dist
                 if dist < min_dist:
@@ -241,7 +242,4 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
     return waypoints
 
 # Debug
-# waypoints = generateWaypoints()
-# print("\nFinal path:")
-# print(waypoints)
-# print("\n\n")
+waypoints = generateWaypoints(log = 1)
