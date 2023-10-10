@@ -473,7 +473,7 @@ def get_robot_pose(drive_meas,servo_theta=0):
 
     return robot_pose, landmarks
 
-def localize(): # turn and call get_robot_pose
+def localize(increment_angle = 5): # turn and call get_robot_pose
     global robot_pose
     global landmarks
     
@@ -488,12 +488,12 @@ def localize(): # turn and call get_robot_pose
     time.sleep(0.2)
     
     # increment by a small angle until it finish 180 degree
-    increment_angle = 5
+    
     current_angle = -90
     for i in range(int(180/increment_angle)):
         current_angle+=increment_angle
         ppi.set_servo(angleToPulse(current_angle*np.pi/180))
-        time.sleep(0.3)
+        time.sleep(0.4)
         _, landmarks = get_robot_pose(drive_meas,servo_theta=increment_angle*np.pi/180)
         time.sleep(0.2)
         landmark_counter+=len(landmarks)
@@ -588,7 +588,7 @@ if __name__ == "__main__":
     # localize([0.,0.])
     # '''
     waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos, log = 1)
-    localize()
+    localize(10)
     for waypoint_progress in range(3):
         current_waypoint = waypoints[waypoint_progress]
         if waypoint_progress == 0:
@@ -596,12 +596,12 @@ if __name__ == "__main__":
         else: 
             current_start_pos = waypoints[waypoint_progress-1]
         path = pathFind.main(current_start_pos, current_waypoint,[])
-        # print(path)
         path.pop(0)
         # path.pop(0)
-        path.append(path[-1]) # NEW Added last sub-waypoint again
+        # path.append(path[-1]) # NEW Added last sub-waypoint again
+        print(path)
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-        localize()
+        localize(10)
 
         for i, sub_waypoint in enumerate(path, 3):
             # Drive to segmented waypoints
@@ -611,12 +611,12 @@ if __name__ == "__main__":
             print("target: "+str(sub_waypoint))
             drive_to_point(sub_waypoint)
             print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
-            landmark_counter = localize()
-            if landmark_counter < 10: # If seen markers not more than 2
-                print(f"Seen less than 10 landmarks during localize ({landmark_counter}). Localize agian")
+            landmark_counter = localize(30)
+            if landmark_counter == 0: # If seen markers not more than 2
+                print(f"Seen 0 landmarks during localize ({landmark_counter}). Localize agian")
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-                localize()
+                localize(10)
             else:
                 pass       
 
