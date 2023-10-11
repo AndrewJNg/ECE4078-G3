@@ -398,15 +398,19 @@ def take_and_analyse_picture():
     landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
     
     # Append fruits to landmarks
-    target_est = detect.fruit_detect(yolov, camera_matrix, img, robot_pose)
+    target_est, network_vis = detect.fruit_detect(yolov, camera_matrix, img, robot_pose)
     if target_est:
-        for id, fruit_pos in target_est:
-            fruit_measurement = measure.Marker(fruit_pos, id)
+        print(target_est)
+        for id, fruit_pos in target_est.items(): 
+            fruit_measurement = measure.Marker(np.array([[fruit_pos['x']],[fruit_pos['y']]]), id)
+            # measure.Marker(position = np.array([[fruit_pos['x']],[fruit_pos['y']]]), tag = i+1)
+            
             landmarks.append(fruit_measurement)
+        # print(landmark)
     # cv2.imshow('Predict',  aruco_img)
     # cv2.waitKey(0)
 
-    return landmarks
+    return landmarks, 0
     # return landmarks, detector_output,aruco_corners
 
 def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
@@ -553,6 +557,7 @@ if __name__ == "__main__":
     ppi.set_servo(angleToPulse(0*np.pi/180))
     
 
+    # TODO Add fruit into add_landmarks etc.
     landmarks = []
     for i,landmark in enumerate(aruco_true_pos):
         measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
@@ -584,28 +589,57 @@ if __name__ == "__main__":
     # localize([0.,0.])
     # localize([0.,0.])
     # '''
-    waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos, log = 1)
+    waypoints_compiled = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos, log = 1)
+    # Note: waypoints are now in format of [[[pose, dist],[],[],[]], [[],[],[],[]], [[],[],[],[]]] to choose least turns needed to reach waypoint
+    
     localize(10)
-    for waypoint_progress in range(3):
-        current_waypoint = waypoints[waypoint_progress]
-        if waypoint_progress == 0:
-            current_start_pos = [0,0]
-        else: 
-            current_start_pos = waypoints[waypoint_progress-1]
-        path = pathFind.main(current_start_pos, current_waypoint,[])
+    waypoints = [[0,0]]
+    for fruit_progress, available_waypoints_with_dist in enumerate(waypoints_compiled):
+        #### Extract path with min_turn ####
+        # Loop through each possible position to each fruit
+        temp_paths = []
+        turn_arr = [50 for z in range(len(available_waypoints_with_dist))]
+        current_start_pos = waypoints[fruit_progress]
+        for i, (pose, dist) in enumerate(available_waypoints_with_dist):
+            temp_paths[i], turns = pathFind.main(pose, fruits_true_pos)
+            turn_arr[i] = turns
+        # Find index of least turn path
+        min_turn = 50
+        min_turn_dist = 50
+        index_min_turn = -1
+        for j, turns in enumerate(turn_arr):
+            if turns < min_turn:
+                min_turn = turns
+                min_turn_dist = dist
+                index_min_turn = j
+            elif turns == min_turn: # If number of turns is equal
+                if dist < min_turn_dist: # If distance is lesser, update path to be best path
+                    min_turn_dist = dist
+                    index_min_turn = j
+
+        # Assign current path and waypoint using index found
+        path = temp_paths[index_min_turn]
+        waypoints.append(available_waypoints_with_dist[index_min_turn][0])
+        # Pop first position
         path.pop(0)
-        # path.pop(0)
-        # path.append(path[-1]) # NEW Added last sub-waypoint again
-        print(path)
+        # Append last position if current path is path to last fruit 
+        if fruit_progress == 2:
+            path.append(path[-1])
+        print(f'Path: {path}')
+        
+
+        #### Start Localizing on Origin ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
         localize(10)
 
+
+        #### Main Algorithm ####
         for i, sub_waypoint in enumerate(path, 3):
             # Drive to segmented waypoints
             # operate.draw(canvas)
             pygame.display.update()
             print("    ")
-            print("target: "+str(sub_waypoint))
+            print("Target: "+str(sub_waypoint))
             drive_to_point(sub_waypoint)
             print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
             landmark_counter = localize(30)
@@ -614,14 +648,10 @@ if __name__ == "__main__":
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
                 localize(10)
-            else:
-                pass       
 
         print(f"######################################################################")
-        print(f"Visited Fruit {waypoint_progress+1}")
+        print(f"Visited Fruit {fruit_progress+1}")
         print(f"######################################################################")
         ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
-    # '''
-
 
 

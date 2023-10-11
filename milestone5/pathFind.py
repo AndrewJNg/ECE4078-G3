@@ -192,7 +192,17 @@ def read_groundtruth(grid,rows):
     f.close()
 
 def add_obstacle(grid, rows, coord):
-    [row, col] = groundtruth_to_grid(coord[0], coord[1], rows)
+    x = coord[0]
+    y = coord[1]
+    if x < -1.6:
+        x = -1.6
+    if x > 1.6:
+        x = 1.6
+    if y < -1.6:
+        y = -1.6
+    if y > 1.6:
+        y = 1.6
+    [row, col] = groundtruth_to_grid(x, y, rows)
     try:
         spot = grid[row][col]
         spot.make_barrier()
@@ -268,7 +278,7 @@ def main(START, END, EXTRA):
     # CHECK IF ANY EXTRA FRUIT
     if len(EXTRA) != 0:
         for fruit in EXTRA:
-            add_obstacle(grid, ROWS, fruit)
+            add_obstacle(grid, ROWS, [fruit[0],fruit[1]])
 
     # ADD START POINT
     row, col = groundtruth_to_grid(START[0], START[1], ROWS)
@@ -307,12 +317,32 @@ def main(START, END, EXTRA):
 
     threshold = 0.4
     path = simplify_path(path,threshold)
+
+    turn = 0
+    vertical = 0
+    horizontal = 0
+    for i in range(len(path)-1):
+        if i == 0:
+            if path[i][0] == path[i+1][0]:
+                horizontal = 1
+            else:
+                vertical = 1
+        else:
+            if path[i][0] != path[i+1][0] and horizontal == 1:
+                horizontal = 0
+                vertical = 1
+                turn = turn + 1
+            elif path[i][1] != path[i+1][1] and vertical == 1:
+                horizontal = 1
+                vertical = 0
+                turn = turn + 1
     
-    return path
+    return path, turn
 
 
 # START = [0, 0]
-# END = [1.2, -0.4]
+# END = [-1.2, -1.2]
 # EXTRA = []
-# path = main(START, END, EXTRA)
+# path, turn = main(START, END, EXTRA)
 # print(path)
+# print(turn)

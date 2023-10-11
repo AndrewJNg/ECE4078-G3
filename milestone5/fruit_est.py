@@ -69,13 +69,13 @@ def fruit_detect(nn_model, camera_matrix, img, robot_pose):
         box = [[box_temp[0]],[box_temp[1]],[box_temp[2]],[box_temp[3]]]
         
         completed_img_dict[int(label)] = {'target': np.array(box),
-                                   'robot': robot_pose}
+                                   'robot': [[robot_pose[0]],[robot_pose[1]],[robot_pose[2]]]}
     # print()
     # print(completed_img_dict)
     
     target_est = estimate_pose(camera_matrix, completed_img_dict)
     print("target_est: ")
     print(target_est)
-    return target_est
+    return target_est,  network_vis
     # imgplot = plt.imshow(network_vis)
     # plt.show()

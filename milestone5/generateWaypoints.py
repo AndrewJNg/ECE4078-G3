@@ -65,37 +65,23 @@ def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
                 visit_pos_arr.pop(dir)
             except:
                 continue
-        # print(visit_pos_arr) # Debug
-        # Calculate distance for each location, prioritizing non-diagonal visit_pos
-        min_dist = 10000
-        if len(visit_pos_arr) != 0: # Prioritize non-diagonal visit_pos
-            for dir, pos in visit_pos_arr.items():
-                x_f, y_f = pos[0], pos[1]
-                dist = np.hypot(x_f-x_i, y_f-y_i)
-                print(f'{dir}: {dist}')
-                # Update min_dist
-                if dist < min_dist:
-                    min_dir = dir
-                    min_dist = dist
-            # Choose optimal visit_pos for non-diagonal visit_pos
-            # print(f'Min direction: {min_dir}')
-            final_visit_pos.append([visit_pos_arr[min_dir][0],visit_pos_arr[min_dir][1]])
-            min_dir_arr.append(min_dir)
 
-        else: # Take diagonal
-            for dir, pos in diag_visit_pos_arr.items():
-                x_f, y_f = pos[0], pos[1]
-                dist = np.hypot(x_f-x_i, y_f-y_i)
+        unmerged_final_visit_pos = []
+        # Appending non colliding positions, while adding distance as second index
+        # if len(visit_pos_arr) != 0: # Prioritize non-diagonal visit_pos
+        for dir, pos in visit_pos_arr.items():
+            x_f, y_f = pos[0], pos[1]
+            dist = np.hypot(x_f-x_i, y_f-y_i)
+            unmerged_final_visit_pos.append([pos, dist])
 
-                # Update min_dist
-                if dist < min_dist:
-                    min_dir = dir
-            # Choose optimal visit_pos for diagonal visit_pos
-            final_visit_pos.append([diag_visit_pos_arr[min_dir][0],diag_visit_pos_arr[min_dir][1]])
-            min_dir_arr.append(min_dir)
-    
-    # print('\nWhere robot is relative to fruit: {}\n'.format(min_dir_arr))   # Debug
-    return final_visit_pos, min_dir_arr
+        # else: # Take diagonal
+        for dir, pos in diag_visit_pos_arr.items():
+            x_f, y_f = pos[0], pos[1]
+            dist = np.hypot(x_f-x_i, y_f-y_i)
+            unmerged_final_visit_pos.append([pos, dist])
+        
+        final_visit_pos.append(unmerged_final_visit_pos)
+    return final_visit_pos
 
 # Based on search order, generate fruit_arr and obstacles_arr containing fruit position
 def getFruitArr(search_list, fruit_list, fruit_true_pos, obstacles_arr):
@@ -204,7 +190,7 @@ def getFromFile(fname):
     return search_list, fruits_list, fruits_true_pos, aruco_true_pos
 
 # Main function
-def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_true_pos={}, log = 0):
+def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_true_pos={}):
     # Define params:
     start_pos = [0,0]   # start pos
     tolerance = 0.2     # distance when robot will take picture from fruit
@@ -221,23 +207,14 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
             print('Reading from estimate SLAM map')
         search_list, fruits_list, fruits_true_pos, aruco_true_pos = getFromFile(fname)
     
-    #print(f'########## Debug ##########\nsearch_list:\n{search_list}\n\nfruits_list:\n{fruits_list}\n\nfruits_true_pos:\n{fruits_true_pos}\n\naruco_true_pos:\n{aruco_true_pos}\n\n')
     # Extracting data from param
     search_fruits, obstacles_arr = getFruitArr(search_list, fruits_list, fruits_true_pos, aruco_true_pos)
+    waypoints = getPath(tolerance, start_pos, search_fruits, obstacles_arr, search_list)
     
     # Debug
+    # print(f'########## Debug ##########\nsearch_list:\n{search_list}\n\nfruits_list:\n{fruits_list}\n\nfruits_true_pos:\n{fruits_true_pos}\n\naruco_true_pos:\n{aruco_true_pos}\n\n')
     # print(f'search_fruits:\n{search_fruits}') 
     # print(f'obstacles_arr:\n{obstacles_arr}')
-
-    waypoints, min_dir_arr = getPath(tolerance, start_pos, search_fruits, obstacles_arr, search_list)
-
-    # Code For debugging
-    
-    if (log == 1):
-        print("\nVisit Fruit Pos:")
-        print(waypoints)
-        print(f'Location: {min_dir_arr}\n')
-
 
     return waypoints
 
