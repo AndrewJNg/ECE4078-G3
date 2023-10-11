@@ -397,15 +397,16 @@ def take_and_analyse_picture():
     img = ppi.get_image()
     landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
     
-    # Append fruits to landmarks
-    target_est, network_vis = detect.fruit_detect(yolov, camera_matrix, img, robot_pose)
-    if target_est:
-        print(target_est)
-        for id, fruit_pos in target_est.items(): 
-            fruit_measurement = measure.Marker(np.array([[fruit_pos['x']],[fruit_pos['y']]]), id)
-            # measure.Marker(position = np.array([[fruit_pos['x']],[fruit_pos['y']]]), tag = i+1)
-            
-            landmarks.append(fruit_measurement)
+    if use_yolo:
+        # Append fruits to landmarks
+        target_est, network_vis = detect.fruit_detect(yolov, camera_matrix, img, robot_pose)
+        if target_est:
+            print(target_est)
+            for id, fruit_pos in target_est.items(): 
+                fruit_measurement = measure.Marker(np.array([[fruit_pos['x']],[fruit_pos['y']]]), id)
+                # measure.Marker(position = np.array([[fruit_pos['x']],[fruit_pos['y']]]), tag = i+1)
+                
+                landmarks.append(fruit_measurement)
         # print(landmark)
     # cv2.imshow('Predict',  aruco_img)
     # cv2.waitKey(0)
@@ -515,6 +516,9 @@ if __name__ == "__main__":
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
     parser.add_argument("--ip", metavar='', type=str, default='192.168.137.47')
     parser.add_argument("--port", metavar='', type=int, default=8000)
+    parser.add_argument("--yolo", metavar='', type=int, default=0)
+    parser.add_argument("--ckpt", metavar='', type=str, default='network/scripts/model/yolov8_model_best.pt')
+
     args, _ = parser.parse_known_args()
 
     # robot startup with given variables
@@ -544,9 +548,11 @@ if __name__ == "__main__":
     baseline = np.loadtxt(fileB, delimiter=',')
 
     # neural network file location
-    args.ckpt = "network/scripts/model/yolov8_model_best.pt"
+    global use_yolo
     global yolov
-    yolov = Detector(args.ckpt)
+    use_yolo = args.yolo
+    if args.yolo:
+        yolov = Detector(args.ckpt)
 
 ####################################################
     ## Set up all EKF using given values in true map
