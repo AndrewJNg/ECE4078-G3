@@ -219,4 +219,4 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
     return waypoints
 
 # Debug
-# waypoints = generateWaypoints(log = 1)
+# waypoints = generateWaypoints()
