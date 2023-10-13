@@ -312,16 +312,18 @@ def angleToPulse(angle):
     #         print()
     #         print("next")
     #         x = input("input, pulse: ")
+    #         # drive_to_point(sub_waypoint)
+    #         pygame.display.update()
     #         ppi.set_servo(int(x))
-
     #     except:
-    #         if(str(x)=='z'):
+    #         if(str(x)=='z' or str(y) =='z'):
     #             break
     #         print("enter again")
+    #     pygame.display.update()
 
     #calibration
     xp= [-90*np.pi/180,-45*np.pi/180,0*np.pi/180,45*np.pi/180,90*np.pi/180]
-    yp= [570,1100,1650,2150,2700]
+    yp= [495,900,1360,1800,2350]
     
     pulse = int(np.interp(angle,xp,yp))
     # print(pulse)
@@ -391,14 +393,13 @@ def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang
 ################################################################### Pictures and model ###################################################################
 def take_and_analyse_picture():
     global aruco_img
-    global use_yolo
-
+    
     img = ppi.get_image()
     landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    use_yolo = 0
+    
     if use_yolo:
         # Append fruits to landmarks
-        target_est, network_vis = detect.fruit_detect(yolov, camera_matrix, img, robot_pose)
+        target_est, network_vis = detect.fruit_detect(yolov, camera_matrix, img, robot_pose) #TODO Get network_vis to visualize
         if target_est:
             print(target_est)
             for id, fruit_pos in target_est.items(): 
@@ -479,7 +480,7 @@ def localize(increment_angle = 5): # turn and call get_robot_pose
     
     landmark_counter = 0
     lv,rv=ppi.set_velocity([0, 0], turning_tick=30, time=0.8) # immediate stop with small delay
-    drive_meas = measure.Drive(lv,rv,0.8,left_cov=0.00001,right_cov=0.00001)
+    drive_meas = measure.Drive(lv,rv,0.8)
 
     # look right first
     ppi.set_servo(angleToPulse(-90*np.pi/180))
@@ -506,7 +507,18 @@ def localize(increment_angle = 5): # turn and call get_robot_pose
     # print(f"Landmarks: {landmark_counter}")
     return landmark_counter
     
-################################################################### Main  ###################################################################
+def isFruitClose(robot_pose, fruits_true_pos, max_dist_to_fruit):
+    x_rob, y_rob = robot_pose[0], robot_pose[1]
+    
+    for (x_fruit, y_fruit) in fruits_true_pos:
+        dist = math.hypot(abs(x_fruit - x_rob) + abs(y_fruit - y_rob))
+        if dist < max_dist_to_fruit:
+            return True
+        
+    return False
+
+
+################################################################### Main ###################################################################
 # main loop
 if __name__ == "__main__":
     ## Robot connection setup
@@ -515,7 +527,6 @@ if __name__ == "__main__":
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
     parser.add_argument("--ip", metavar='', type=str, default='192.168.137.47')
     parser.add_argument("--port", metavar='', type=int, default=8000)
-    parser.add_argument("--yolo", metavar='', type=int, default=0)
     parser.add_argument("--ckpt", metavar='', type=str, default='network/scripts/model/yolov8_model_best.pt')
 
     args, _ = parser.parse_known_args()
@@ -546,14 +557,10 @@ if __name__ == "__main__":
     fileB = "calibration/param/baseline.txt"
     baseline = np.loadtxt(fileB, delimiter=',')
 
-    global output_path
-    output_path = dh.OutputWriter('lab_output')
     # neural network file location
     global use_yolo
     global yolov
-    use_yolo = 0
-    if args.yolo:
-        yolov = Detector(args.ckpt)
+    yolov = Detector(args.ckpt)
 
 ####################################################
     ## Set up all EKF using given values in true map
@@ -590,23 +597,17 @@ if __name__ == "__main__":
 ####################################################
     global robot_pose
     robot_pose = [0.,0.,0.]
-    # pygame.display.update()
-    # robot_turn(turn_angle=90*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-    # robot_straight(0.8)
+
 ########################################   A* CODE INTEGRATED ##################################################
-    # localize([0.,0.])
-    # localize([0.,0.])
-    # localize([0.,0.])
-    # '''
     waypoints_compiled = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos)
     # Note: waypoints are now in format of [[[pose, dist],[],[],[]], [[],[],[],[]], [[],[],[],[]]] to choose least turns needed to reach waypoint
     
-    localize(10)
+    # localize(10)
     waypoints = [[0,0]]
     for fruit_progress, available_waypoints_with_dist in enumerate(waypoints_compiled):
-        #### Extract path with min_turn ####
+        # Extract path with min_turn
         # Loop through each possible position to each fruit
-        temp_paths = [50 for z in range(len(available_waypoints_with_dist))]
+        temp_paths = [[] for z in range(len(available_waypoints_with_dist))]
         turn_arr = [50 for z in range(len(available_waypoints_with_dist))]
         current_start_pos = waypoints[fruit_progress]
         for i, (pose, dist) in enumerate(available_waypoints_with_dist):
@@ -635,17 +636,19 @@ if __name__ == "__main__":
         if fruit_progress == 2:
             path.append(path[-1])
         print(f'Path: {path}')
-        print(f'Turns for path: {min_turn}')
+        
+
+        #### Main Algorithm ####
 
         #### Start Localizing on Origin ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
         localize(10)
 
-
-        #### Main Algorithm ####
         for i, sub_waypoint in enumerate(path, 3):
             # Drive to segmented waypoints
             # operate.draw(canvas)
+            use_yolo = isFruitClose(robot_pose, fruits_true_pos, max_dist_to_fruit = 0.4)
+
             pygame.display.update()
             print("    ")
             print("Target: "+str(sub_waypoint))
@@ -657,38 +660,11 @@ if __name__ == "__main__":
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
                 localize(10)
-        
-        output_path.write_map(ekf)
-        
+
         print(f"######################################################################")
         print(f"Visited Fruit {fruit_progress+1}")
         print(f"######################################################################")
         ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
-
-
-
-
-
-
-
-
-
-
-    # if command['output']:
-        # self.notification = 'Map is saved'
-        # self.command['output'] = False
-    # save inference with the matching robot pose and detector labels
-    # if self.command['save_inference']:
-    #     if self.file_output is not None:
-    #         #image = cv2.cvtColor(self.file_output[0], cv2.COLOR_RGB2BGR)
-    #         self.pred_fname = self.output.write_image(self.file_output[0],
-    #                                                 self.file_output[1])
-    #         self.notification = f'Prediction is saved to {operate.pred_fname}'
-    #     else:
-    #         self.notification = f'No prediction in buffer, save ignored'
-    #     self.command['save_inference'] = False
-
-    # '''
 
 
 

@@ -58,6 +58,14 @@ class EKF:
             utils = MappingUtils(self.markers, self.P[3:,3:], self.taglist)
             utils.save(fname)
 
+    # def load_map(self, fname="./lab_output/slam.txt"):
+    #     utils_load = MappingUtils()
+    #     utils_load.load(fname)
+
+    #     self.markers = utils_load.markers
+    #     self.P = utils_load.covariance
+    #     self.taglist = utils_load.taglist
+
     def recover_from_pause(self, measurements):
         if not measurements:
             return False

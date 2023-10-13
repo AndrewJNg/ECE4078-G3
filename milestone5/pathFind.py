@@ -113,7 +113,7 @@ def reconstruct_path(came_from, current):
         
         # MODIFICATION TO EXTRACT COORDINATES
         row, col = current.get_pos()
-        x, y = grid_to_coord(row, col, 17)
+        x, y = grid_to_coord(row, col, 33)
         path.append([x, y])
         current.make_path()
     return path
@@ -189,19 +189,109 @@ def read_groundtruth(grid,rows):
             spot.make_barrier()
         except:
             pass
+        try:
+            spot = grid[row + 1][col]
+            spot.make_barrier()
+        except:
+            pass
+        try:
+            spot = grid[row][col + 1]
+            spot.make_barrier()
+        except:
+            pass
+        try:
+            spot = grid[row - 1][col]
+            spot.make_barrier()
+        except:
+            pass
+        try:
+            spot = grid[row][col - 1]
+            spot.make_barrier()
+        except:
+            pass
+        try:
+            spot = grid[row + 1][col + 1]
+            spot.make_barrier()
+        except:
+            pass
+        try:
+            spot = grid[row + 1][col - 1]
+            spot.make_barrier()
+        except:
+            pass
+        try:
+            spot = grid[row - 1][col + 1]
+            spot.make_barrier()
+        except:
+            pass
+        try:
+            spot = grid[row - 1][col - 1]
+            spot.make_barrier()
+        except:
+            pass
     f.close()
 
 def add_obstacle(grid, rows, coord):
-    [row, col] = groundtruth_to_grid(coord[0], coord[1], rows)
+    x = coord[0]
+    y = coord[1]
+    if x < -1.6:
+        x = -1.6
+    if x > 1.6:
+        x = 1.6
+    if y < -1.6:
+        y = -1.6
+    if y > 1.6:
+        y = 1.6
+    [row, col] = groundtruth_to_grid(x, y, rows)
     try:
         spot = grid[row][col]
         spot.make_barrier()
     except:
         pass
-
+    try:
+        spot = grid[row + 1][col]
+        spot.make_barrier()
+    except:
+        pass
+    try:
+        spot = grid[row][col + 1]
+        spot.make_barrier()
+    except:
+        pass
+    try:
+        spot = grid[row - 1][col]
+        spot.make_barrier()
+    except:
+        pass
+    try:
+        spot = grid[row][col - 1]
+        spot.make_barrier()
+    except:
+        pass
+    try:
+        spot = grid[row + 1][col + 1]
+        spot.make_barrier()
+    except:
+        pass
+    try:
+        spot = grid[row + 1][col - 1]
+        spot.make_barrier()
+    except:
+        pass
+    try:
+        spot = grid[row - 1][col + 1]
+        spot.make_barrier()
+    except:
+        pass
+    try:
+        spot = grid[row - 1][col - 1]
+        spot.make_barrier()
+    except:
+        pass
+    
 def add_boundary(grid, rows):
-    for x in range(-16, 18, 2):
-        for y in range(-16, 18, 2):
+    for x in range(-16, 17, 1):
+        for y in range(-16, 17, 1):
             if x < -12 or x > 12 or y < -12 or y > 12:
                 [row, col] = groundtruth_to_grid(round(x/10,1),round(y/10,1),rows)
                 spot = grid[row][col]
@@ -255,7 +345,7 @@ def simplify_path(path, threshold):
 # END: list [x2, y2]
 # EXTRA: nested list [[x, y], [x, y]]
 def main(START, END, EXTRA):
-    ROWS = 17
+    ROWS = 33
     width = 40*ROWS
     grid = make_grid(ROWS, width)
 
@@ -268,7 +358,7 @@ def main(START, END, EXTRA):
     # CHECK IF ANY EXTRA FRUIT
     if len(EXTRA) != 0:
         for fruit in EXTRA:
-            add_obstacle(grid, ROWS, fruit)
+            add_obstacle(grid, ROWS, [fruit[0],fruit[1]])
 
     # ADD START POINT
     row, col = groundtruth_to_grid(START[0], START[1], ROWS)
@@ -286,7 +376,10 @@ def main(START, END, EXTRA):
     if col >= ROWS:
         col = col - 1
     end = grid[row][col]
-    end.make_end()
+    if end.is_barrier():
+        return [], 100
+    else:
+        end.make_end()
 
     for row in grid:
         for spot in row:
@@ -307,12 +400,32 @@ def main(START, END, EXTRA):
 
     threshold = 0.4
     path = simplify_path(path,threshold)
+
+    turn = 0
+    vertical = 0
+    horizontal = 0
+    for i in range(len(path)-1):
+        if i == 0:
+            if path[i][0] == path[i+1][0]:
+                horizontal = 1
+            else:
+                vertical = 1
+        else:
+            if path[i][0] != path[i+1][0] and horizontal == 1:
+                horizontal = 0
+                vertical = 1
+                turn = turn + 1
+            elif path[i][1] != path[i+1][1] and vertical == 1:
+                horizontal = 1
+                vertical = 0
+                turn = turn + 1
     
-    return path
+    return path, turn
 
 
 # START = [0, 0]
-# END = [1.2, -0.4]
+# END = [-1.2, 0]
 # EXTRA = []
-# path = main(START, END, EXTRA)
+# path, turn = main(START, END, EXTRA)
 # print(path)
+# print(turn)
