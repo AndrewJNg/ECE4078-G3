@@ -587,6 +587,7 @@ if __name__ == "__main__":
     # localize([0.,0.])
     # localize([0.,0.])
     # '''
+    print(aruco_true_pos)
     waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos, log = 1)
     localize(10)
     for waypoint_progress in range(3):
@@ -621,6 +622,8 @@ if __name__ == "__main__":
                 pass       
         
         output_path.write_map(ekf)
+
+        
         print(f"######################################################################")
         print(f"Visited Fruit {waypoint_progress+1}")
         print(f"######################################################################")
