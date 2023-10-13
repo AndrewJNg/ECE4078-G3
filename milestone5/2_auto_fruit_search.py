@@ -323,7 +323,7 @@ def angleToPulse(angle):
 
     #calibration
     xp= [-90*np.pi/180,-45*np.pi/180,0*np.pi/180,45*np.pi/180,90*np.pi/180]
-    yp= [495,900,1360,1800,2350]
+    yp= [570,1100,1650,2150,2700]
     
     pulse = int(np.interp(angle,xp,yp))
     # print(pulse)
@@ -393,10 +393,11 @@ def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang
 ################################################################### Pictures and model ###################################################################
 def take_and_analyse_picture():
     global aruco_img
-    
+    global use_yolo
+
     img = ppi.get_image()
     landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    
+    use_yolo = 0
     if use_yolo:
         # Append fruits to landmarks
         target_est, network_vis = detect.fruit_detect(yolov, camera_matrix, img, robot_pose)
@@ -550,7 +551,7 @@ if __name__ == "__main__":
     # neural network file location
     global use_yolo
     global yolov
-    use_yolo = args.yolo
+    use_yolo = 0
     if args.yolo:
         yolov = Detector(args.ckpt)
 
@@ -605,11 +606,11 @@ if __name__ == "__main__":
     for fruit_progress, available_waypoints_with_dist in enumerate(waypoints_compiled):
         #### Extract path with min_turn ####
         # Loop through each possible position to each fruit
-        temp_paths = []
+        temp_paths = [50 for z in range(len(available_waypoints_with_dist))]
         turn_arr = [50 for z in range(len(available_waypoints_with_dist))]
         current_start_pos = waypoints[fruit_progress]
         for i, (pose, dist) in enumerate(available_waypoints_with_dist):
-            temp_paths[i], turns = pathFind.main(pose, fruits_true_pos)
+            temp_paths[i], turns = pathFind.main(current_start_pos, pose, fruits_true_pos)
             turn_arr[i] = turns
         # Find index of least turn path
         min_turn = 50
@@ -634,7 +635,7 @@ if __name__ == "__main__":
         if fruit_progress == 2:
             path.append(path[-1])
         print(f'Path: {path}')
-        
+        print(f'Turns for path: {min_turn}')
 
         #### Start Localizing on Origin ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)

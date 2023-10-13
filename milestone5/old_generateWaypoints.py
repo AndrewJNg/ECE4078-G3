@@ -7,7 +7,7 @@ import ast
 import numpy as np
 
 
-def getPath(dist_to_fruit, start_pos, fruits_arr, obstacles_arr, fruit_order):
+def getPath(tolerance, start_pos, fruits_arr, obstacles_arr, fruit_order):
     """
     Returns: 
         - `2D arr` with 3 coordinates
@@ -38,18 +38,34 @@ def getPath(dist_to_fruit, start_pos, fruits_arr, obstacles_arr, fruit_order):
 
         # Generate locations for non-diagonal visit_pos
         visit_pos_arr = {}
-        visit_pos_arr['right'] =    [round(x0+dist_to_fruit,1), y0]
-        visit_pos_arr['up'] =       [x0, round(y0+dist_to_fruit,1)]
-        visit_pos_arr['left'] =     [round(x0-dist_to_fruit,1), y0]
-        visit_pos_arr['down'] =     [x0, round(y0-dist_to_fruit,1)]
+        visit_pos_arr['right'] =    [round(x0+tolerance,1), y0, round(x0+0.4,1), y0]
+        visit_pos_arr['up'] =       [x0, round(y0+tolerance,1), x0, round(y0+0.4,1)]
+        visit_pos_arr['left'] =     [round(x0-tolerance,1), y0, round(x0-0.4,1), y0]
+        visit_pos_arr['down'] =     [x0, round(y0-tolerance,1), x0, round(y0-0.4,1)]
         # Generate locations for diagonal visit_pos
         diag_visit_pos_arr = {}
-        diag_visit_pos_arr['upleft'] =       [round(x0-dist_to_fruit,1), round(y0+dist_to_fruit,1)]
-        diag_visit_pos_arr['upright'] =      [round(x0+dist_to_fruit,1), round(y0+dist_to_fruit,1)]
-        diag_visit_pos_arr['downleft'] =     [round(x0-dist_to_fruit,1), round(y0-dist_to_fruit,1)]
-        diag_visit_pos_arr['downright'] =    [round(x0+dist_to_fruit,1), round(y0-dist_to_fruit,1)]
+        diag_visit_pos_arr['upright'] =      [round(x0+tolerance,1), round(y0+tolerance,1), round(x0+0.4,1), round(y0+0.4,1)]
+        diag_visit_pos_arr['upleft'] =       [round(x0-tolerance,1), round(y0+tolerance,1), round(x0-0.4,1), round(y0+0.4,1)]
+        diag_visit_pos_arr['downleft'] =     [round(x0-tolerance,1), round(y0-tolerance,1), round(x0-0.4,1), round(y0-0.4,1)]
+        diag_visit_pos_arr['downright'] =    [round(x0+tolerance,1), round(y0-tolerance,1), round(x0+0.4,1), round(y0-0.4,1)]
         # print('\nFruit {}: {}'.format(index, visit_pos_arr))  # Debug
+        # Create a list to store positions to remove
+        positions_to_remove = []
+        # Check if obstacle is in each location
+        for obstacle_idx, obstacle_pos in enumerate(obstacles_arr):
+            x_o, y_o = obstacle_pos[0], obstacle_pos[1]
+            for dir, pos in visit_pos_arr.items():
+                if (x_o == pos[2] and y_o == pos[3]) or (abs(pos[2]) == 1.6) or (abs(pos[3]) == 1.6):
+                    # print('{} visit_pos clashes with obstacle {} at {} [{},{}]'.format(fruit_order[index], obstacle_idx, dir, pos[2],pos[3]))    # Debug
+                    positions_to_remove.append(dir)
         
+        # Remove positions that clashed with obstacles
+        for dir in positions_to_remove:
+            try:
+                visit_pos_arr.pop(dir)
+            except:
+                continue
+
         unmerged_final_visit_pos = []
         # Appending non colliding positions, while adding distance as second index
         # if len(visit_pos_arr) != 0: # Prioritize non-diagonal visit_pos
@@ -64,7 +80,6 @@ def getPath(dist_to_fruit, start_pos, fruits_arr, obstacles_arr, fruit_order):
             dist = np.hypot(x_f-x_i, y_f-y_i)
             unmerged_final_visit_pos.append([pos, dist])
         
-        # Merge with diagonal visit_pos
         final_visit_pos.append(unmerged_final_visit_pos)
     return final_visit_pos
 
@@ -178,7 +193,7 @@ def getFromFile(fname):
 def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_true_pos={}):
     # Define params:
     start_pos = [0,0]   # start pos
-    dist_to_fruit = 0.2     # distance when robot will take picture from fruit
+    tolerance = 0.2     # distance when robot will take picture from fruit
 
     # For debugging, to run independently
     debug = 0
@@ -194,7 +209,7 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
     
     # Extracting data from param
     search_fruits, obstacles_arr = getFruitArr(search_list, fruits_list, fruits_true_pos, aruco_true_pos)
-    waypoints = getPath(dist_to_fruit, start_pos, search_fruits, obstacles_arr, search_list)
+    waypoints = getPath(tolerance, start_pos, search_fruits, obstacles_arr, search_list)
     
     # Debug
     # print(f'########## Debug ##########\nsearch_list:\n{search_list}\n\nfruits_list:\n{fruits_list}\n\nfruits_true_pos:\n{fruits_true_pos}\n\naruco_true_pos:\n{aruco_true_pos}\n\n')
@@ -204,4 +219,4 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
     return waypoints
 
 # Debug
-# waypoints = generateWaypoints(log = 1)
+# waypoints = generateWaypoints()

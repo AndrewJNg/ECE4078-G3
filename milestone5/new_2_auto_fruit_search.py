@@ -602,16 +602,16 @@ if __name__ == "__main__":
     waypoints_compiled = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos)
     # Note: waypoints are now in format of [[[pose, dist],[],[],[]], [[],[],[],[]], [[],[],[],[]]] to choose least turns needed to reach waypoint
     
-    localize(10)
+    # localize(10)
     waypoints = [[0,0]]
     for fruit_progress, available_waypoints_with_dist in enumerate(waypoints_compiled):
         # Extract path with min_turn
         # Loop through each possible position to each fruit
-        temp_paths = []
+        temp_paths = [[] for z in range(len(available_waypoints_with_dist))]
         turn_arr = [50 for z in range(len(available_waypoints_with_dist))]
         current_start_pos = waypoints[fruit_progress]
         for i, (pose, dist) in enumerate(available_waypoints_with_dist):
-            temp_paths[i], turns = pathFind.main(pose, fruits_true_pos)
+            temp_paths[i], turns = pathFind.main(current_start_pos, pose, fruits_true_pos)
             turn_arr[i] = turns
         # Find index of least turn path
         min_turn = 50
