@@ -209,9 +209,9 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
     start_pos = [0,0]   # start pos
     tolerance = 0.2     # distance when robot will take picture from fruit
 
-    # For debugging, to run independently
     debug = 0
-    if debug:
+    # For debugging, to run independently
+    if debug and search_list == {}:
         groundtruth = 1
         if groundtruth == 1:
             fname = 'M4_true_map.txt'

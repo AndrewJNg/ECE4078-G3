@@ -44,6 +44,19 @@ def match_aruco_points(aruco0 : dict, aruco1 : dict):
         keys.append(key)
     return keys, np.hstack(points0), np.hstack(points1)
 
+def match_aruco_points_slam(aruco0 : dict, aruco1 : dict):
+    points0 = []
+    points1 = []
+    keys = []
+    for key in aruco0:
+        # if not key in aruco0:
+        #     continue
+        
+        points0.append(aruco0[key])
+        # points1.append(aruco1[key])
+        keys.append(key)
+    return keys, np.hstack(points0)
+
 def solve_umeyama2d(points1, points2):
     # Solve the optimal transform such that
     # R(theta) * p1_i + t = p2_i
@@ -105,8 +118,14 @@ if __name__ == '__main__':
     parser.add_argument("estimate", type=str, help="The estimate file name.")
     args = parser.parse_args()
 
+    # obtain file output
     gt_aruco = parse_groundtruth(args.groundtruth)
     us_aruco = parse_user_map(args.estimate)
+
+    # append point (0,0) as the start origin point
+    gt_aruco[0]=np.array([[ 0],[0]])
+    us_aruco[0]= np.array([[ 0],[0]])
+
 
     taglist, us_vec, gt_vec = match_aruco_points(us_aruco, gt_aruco)
     idx = np.argsort(taglist)
@@ -114,13 +133,19 @@ if __name__ == '__main__':
     us_vec = us_vec[:,idx]
     gt_vec = gt_vec[:, idx] 
 
+    # using one known aruco, and known starting point at (0,0), estimate the transform 
     theta, x = solve_umeyama2d(us_vec, gt_vec)
     us_vec_aligned = apply_transform(theta, x, us_vec)
-    
+
+    # calculate error so far
     diff = gt_vec - us_vec_aligned
     rmse = compute_rmse(us_vec, gt_vec)
     rmse_aligned = compute_rmse(us_vec_aligned, gt_vec)
-    
+
+    # apply the same transform to estimated for all points position 
+    taglist_pred, us_vec_pred = match_aruco_points_slam(us_aruco, gt_aruco)
+    us_vec_aligned_pred = apply_transform(theta, x, us_vec_pred)
+
     print()
     print("The following parameters optimally transform the estimated points to the ground truth.")
     print("Rotation Angle: {}".format(theta))
@@ -134,15 +159,16 @@ if __name__ == '__main__':
     print()
     print('%s %7s %9s %7s %11s %9s %7s' % ('Marker', 'Real x', 'Pred x', 'Δx', 'Real y', 'Pred y', 'Δy'))
     print('-----------------------------------------------------------------')
+    
     for i in range(len(taglist)):
         print('%3d %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f\n' % (taglist[i], gt_vec[0][i], us_vec_aligned[0][i], diff[0][i], gt_vec[1][i], us_vec_aligned[1][i], diff[1][i]))
     
     ax = plt.gca()
     ax.scatter(gt_vec[0,:], gt_vec[1,:], marker='o', color='C0', s=100)
-    ax.scatter(us_vec_aligned[0,:], us_vec_aligned[1,:], marker='x', color='C1', s=100)
-    for i in range(len(taglist)):
-        ax.text(gt_vec[0,i]+0.05, gt_vec[1,i]+0.05, taglist[i], color='C0', size=12)
-        ax.text(us_vec_aligned[0,i]+0.05, us_vec_aligned[1,i]+0.05, taglist[i], color='C1', size=12)
+    ax.scatter(us_vec_aligned_pred[0,:], us_vec_aligned_pred[1,:], marker='x', color='C1', s=100)
+    for i in range(len(taglist_pred)):
+        # ax.text(gt_vec[0,i]+0.05, gt_vec[1,i]+0.05, taglist_pred[i], color='C0', size=12)
+        ax.text(us_vec_aligned_pred[0,i]+0.05, us_vec_aligned_pred[1,i]+0.05, taglist_pred[i], color='C1', size=12)
     plt.title('Arena')
     plt.xlabel('X')
     plt.ylabel('Y')
@@ -151,3 +177,4 @@ if __name__ == '__main__':
     plt.legend(['Real','Pred'])
     plt.grid()
     plt.show()
+

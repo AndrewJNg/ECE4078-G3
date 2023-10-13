@@ -22,6 +22,7 @@ class EKF:
         # Covariance matrix
         self.P = np.zeros((3,3))
         self.init_lm_cov = 1e3
+        # self.init_lm_cov = 1
         self.robot_init_state = None
         self.lm_pics = []
         for i in range(1, 11):
@@ -37,7 +38,7 @@ class EKF:
         self.taglist = []
         # Covariance matrix
         self.P = np.zeros((3,3))
-        self.init_lm_cov = 1e3
+        self.init_lm_cov = 1e-3
         self.robot_init_state = None
 
     def number_landmarks(self):
@@ -86,7 +87,7 @@ class EKF:
 
     # the prediction step of EKF
     def predict(self, raw_drive_meas,servo_theta =0):
-
+        
         F = self.state_transition(raw_drive_meas)
         self.robot.drive(drive_meas = raw_drive_meas, servo_theta=servo_theta)
 
