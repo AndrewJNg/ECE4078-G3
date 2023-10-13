@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-redapple
+greenapple
+mango
 capsicum
-greenapple
-=======
-greenapple
-orange
-redapple
->>>>>>> origin/HongJye

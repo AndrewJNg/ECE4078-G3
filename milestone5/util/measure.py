@@ -9,17 +9,13 @@ class Marker:
 
 class Drive:
     # Measurement of the robot wheel velocities
-    def __init__(self, left_speed, right_speed, dt, left_cov = 1, right_cov = 1):
+    def __init__(self, left_speed, right_speed, dt, left_cov = 0.1, right_cov = 0.1):
         self.left_speed = left_speed
         self.right_speed = right_speed
         self.dt = dt
         self.left_cov = left_cov
-<<<<<<< HEAD
         self.right_cov = right_cov
 
     # def update_cov(self, left_cov=0.1, right_cov=0.1):
     #     self.left_cov = left_cov
     #     self.right_cov = right_cov
-=======
-        self.right_cov = right_cov
->>>>>>> origin/HongJye

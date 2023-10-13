@@ -312,18 +312,16 @@ def angleToPulse(angle):
     #         print()
     #         print("next")
     #         x = input("input, pulse: ")
-    #         # drive_to_point(sub_waypoint)
-    #         pygame.display.update()
     #         ppi.set_servo(int(x))
+
     #     except:
-    #         if(str(x)=='z' or str(y) =='z'):
+    #         if(str(x)=='z'):
     #             break
     #         print("enter again")
-    #     pygame.display.update()
 
     #calibration
     xp= [-90*np.pi/180,-45*np.pi/180,0*np.pi/180,45*np.pi/180,90*np.pi/180]
-    yp= [495,900,1360,1800,2350]
+    yp= [570,1100,1650,2150,2700]
     
     pulse = int(np.interp(angle,xp,yp))
     # print(pulse)
