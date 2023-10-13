@@ -541,6 +541,8 @@ if __name__ == "__main__":
     fileB = "calibration/param/baseline.txt"
     baseline = np.loadtxt(fileB, delimiter=',')
 
+    global output_path
+    output_path = dh.OutputWriter('lab_output')
     # neural network file location
     # args.ckpt = "network/scripts/model/yolov8_model_best.pt"
     # yolov = Detector(args.ckpt)
@@ -554,13 +556,13 @@ if __name__ == "__main__":
     ppi.set_servo(angleToPulse(0*np.pi/180))
     
 
-    landmarks = []
-    for i,landmark in enumerate(aruco_true_pos):
-        measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
-                                              tag = i+1)
+    # landmarks = []
+    # for i,landmark in enumerate(aruco_true_pos):
+    #     measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
+    #                                           tag = i+1)
                                               
-        landmarks.append(measurement_landmark)
-    ekf.add_landmarks(landmarks)
+    #     landmarks.append(measurement_landmark)
+    # ekf.add_landmarks(landmarks)
 
     search_list = read_search_list()
     print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
@@ -617,11 +619,30 @@ if __name__ == "__main__":
                 localize(10)
             else:
                 pass       
-
+        
+        output_path.write_map(ekf)
         print(f"######################################################################")
         print(f"Visited Fruit {waypoint_progress+1}")
         print(f"######################################################################")
         ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
+
+
+        
+    
+    # if command['output']:
+        # self.notification = 'Map is saved'
+        # self.command['output'] = False
+    # save inference with the matching robot pose and detector labels
+    # if self.command['save_inference']:
+    #     if self.file_output is not None:
+    #         #image = cv2.cvtColor(self.file_output[0], cv2.COLOR_RGB2BGR)
+    #         self.pred_fname = self.output.write_image(self.file_output[0],
+    #                                                 self.file_output[1])
+    #         self.notification = f'Prediction is saved to {operate.pred_fname}'
+    #     else:
+    #         self.notification = f'No prediction in buffer, save ignored'
+    #     self.command['save_inference'] = False
+
     # '''
 
 

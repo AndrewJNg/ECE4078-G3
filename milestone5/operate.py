@@ -25,6 +25,45 @@ sys.path.insert(0,"{}/network/".format(os.getcwd()))
 sys.path.insert(0,"{}/network/scripts".format(os.getcwd()))
 from network.scripts.detector import Detector
 
+def clamp_angle(rad_angle=0, min_value=-np.pi, max_value=np.pi):
+	"""
+	Restrict angle to the range [min, max]
+	:param rad_angle: angle in radians
+	:param min_value: min angle value
+	:param max_value: max angle value
+	"""
+
+	if min_value > 0:
+		min_value *= -1
+
+	angle = (rad_angle + max_value) % (2 * np.pi) + min_value
+
+	return angle
+def angleToPulse(angle):
+
+    ## servo calibration
+    # while True:
+    #     try:
+    #         print()
+    #         print("next")
+    #         x = input("input, pulse: ")
+    #         self.pibot.set_servo(int(x))
+
+    #     except:
+    #         if(str(x)=='z'):
+    #             break
+    #         print("enter again")
+
+    #calibration
+    xp= [-90*np.pi/180,-45*np.pi/180,0*np.pi/180,45*np.pi/180,90*np.pi/180]
+    yp= [570,1100,1650,2150,2700]
+    
+    pulse = int(np.interp(angle,xp,yp))
+    # print(pulse)
+    return pulse
+
+
+
 
 class Operate:
     def __init__(self, args):
@@ -98,9 +137,80 @@ class Operate:
         self.img = self.pibot.get_image()
         if not self.data is None:
             self.data.write_image(self.img)
+            
+    ########################################################################################################
+    def take_and_analyse_picture(self):
+        # global aruco_img
+        
+        # img = self.pibot.get_image()
+        self.take_pic()
+        img = self.img
+        landmarks, aruco_img, boundingbox = self.aruco_det.detect_marker_positions(img)
+        # detector_output, img_yolov = yolov.detect_single_image(img)
+        detector_output =0
+        
+        # cv2.imshow('Predict',  aruco_img)
+        # cv2.waitKey(0)
+
+        return landmarks, detector_output
+    
+    def get_robot_pose(self,drive_meas,servo_theta=0):
+    ####################################################
+        global robot_pose
+        global landmarks # NEW Added
+        ## method 2: Using SLAM through EKF filtering
+        # '''
+        landmarks, detector_output = self.take_and_analyse_picture()
+        landmarks = self.update_slam(drive_meas,servo_theta=servo_theta)
+        
+        # ekf.predict(drive_meas,servo_theta=servo_theta)
+        # ekf.add_landmarks(landmarks) 
+        # ekf.update(landmarks)
+        robot_pose = self.ekf.robot.state.reshape(-1)
+        # # print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
+        # # visualise
+        operate.draw(canvas)
+        pygame.display.update()
+
+        return robot_pose, landmarks
+
+    def localize(self,increment_angle = 5): # turn and call get_robot_pose
+        global robot_pose
+        global landmarks
+        
+        landmark_counter = 0
+        lv,rv=self.pibot.set_velocity([0, 0], turning_tick=30, time=0.8) # immediate stop with small delay
+        drive_meas = measure.Drive(lv,rv,0.8,left_cov=0.00001,right_cov=0.00001)
+
+        # look right first
+        self.pibot.set_servo(angleToPulse(-90*np.pi/180))
+        time.sleep(0.3)
+        self.get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
+        time.sleep(0.2)
+        
+        # increment by a small angle until it finish 180 degree
+        
+        current_angle = -90
+        for i in range(int(180/increment_angle)):
+            current_angle+=increment_angle
+            self.pibot.set_servo(angleToPulse(current_angle*np.pi/180))
+            time.sleep(0.4)
+            _, landmarks = self.get_robot_pose(drive_meas,servo_theta=increment_angle*np.pi/180)
+            time.sleep(0.2)
+            landmark_counter+=len(landmarks)
+
+        # look back at center
+        self.pibot.set_servo(angleToPulse(0*np.pi/180))
+        time.sleep(0.3)
+        self.get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
+        time.sleep(0.5)
+        # print(f"Landmarks: {landmark_counter}")
+        return landmark_counter
+
+    ########################################################################################################
 
     # SLAM with ARUCO markers       
-    def update_slam(self, drive_meas):
+    def update_slam(self, drive_meas,servo_theta=0):
         lms, self.aruco_img,bbox = self.aruco_det.detect_marker_positions(cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB))
         if self.request_recover_robot:
             is_success = self.ekf.recover_from_pause(lms)
@@ -112,9 +222,10 @@ class Operate:
                 self.ekf_on = False
             self.request_recover_robot = False
         elif self.ekf_on: # and not self.debug_flag:
-            self.ekf.predict(drive_meas)
+            self.ekf.predict(drive_meas,servo_theta=servo_theta)
             self.ekf.add_landmarks(lms)
             self.ekf.update(lms)
+        return lms
 
     # using computer vision to detect targets
     def detect_target(self):
@@ -255,6 +366,9 @@ class Operate:
             # save image
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
                 self.command['save_image'] = True
+                
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_w:
+                self.localize(increment_angle = 15)
             # save SLAM map
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                 self.command['output'] = True
@@ -308,7 +422,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.3')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.47')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
@@ -349,6 +463,7 @@ if __name__ == "__main__":
             counter += 2
 
     operate = Operate(args)
+    operate.pibot.set_servo(angleToPulse(0*np.pi/180))
 
     while start:
         operate.update_keyboard()

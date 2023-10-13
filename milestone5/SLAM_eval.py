@@ -44,6 +44,19 @@ def match_aruco_points(aruco0 : dict, aruco1 : dict):
         keys.append(key)
     return keys, np.hstack(points0), np.hstack(points1)
 
+def match_aruco_points_slam(aruco0 : dict, aruco1 : dict):
+    points0 = []
+    points1 = []
+    keys = []
+    for key in aruco0:
+        # if not key in aruco0:
+        #     continue
+        
+        points0.append(aruco0[key])
+        # points1.append(aruco1[key])
+        keys.append(key)
+    return keys, np.hstack(points0)
+
 def solve_umeyama2d(points1, points2):
     # Solve the optimal transform such that
     # R(theta) * p1_i + t = p2_i
@@ -106,21 +119,47 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     gt_aruco = parse_groundtruth(args.groundtruth)
+    # gt_aruco[0]={'x':0,'y':0}
+    
+    # print(gt_aruco)
     us_aruco = parse_user_map(args.estimate)
+    # us_aruco[0]={'x':0,'y':0}
+    # print(us_aruco)
 
     taglist, us_vec, gt_vec = match_aruco_points(us_aruco, gt_aruco)
+    # print(us_vec)
+    ori_us_vec = us_vec
     idx = np.argsort(taglist)
     taglist = np.array(taglist)[idx]
     us_vec = us_vec[:,idx]
+    # print(us_vec)
     gt_vec = gt_vec[:, idx] 
 
     theta, x = solve_umeyama2d(us_vec, gt_vec)
+    print("theta:")
+    print(theta)
+    print("x")
+    print(x)
+    
     us_vec_aligned = apply_transform(theta, x, us_vec)
+    taglist_pred, us_vec_pred = match_aruco_points_slam(us_aruco, gt_aruco)
+    # print(us_vec_pred)
+    us_vec_aligned_pred = apply_transform(theta, x, us_vec_pred)
+    # us_aruco =  us_aruco[:,idx]
+    # us_vec_aligned = apply_transform(theta, x,  us_aruco)
+    # print()
+    print("aligned")
+    print(us_vec_aligned_pred)
+    print("aligned")
+    print(us_vec_aligned_pred)
     
     diff = gt_vec - us_vec_aligned
     rmse = compute_rmse(us_vec, gt_vec)
     rmse_aligned = compute_rmse(us_vec_aligned, gt_vec)
-    
+
+    # print("aligned")
+    # print(us_vec_aligned)
+
     print()
     print("The following parameters optimally transform the estimated points to the ground truth.")
     print("Rotation Angle: {}".format(theta))
@@ -134,15 +173,16 @@ if __name__ == '__main__':
     print()
     print('%s %7s %9s %7s %11s %9s %7s' % ('Marker', 'Real x', 'Pred x', 'Δx', 'Real y', 'Pred y', 'Δy'))
     print('-----------------------------------------------------------------')
+    
     for i in range(len(taglist)):
         print('%3d %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f\n' % (taglist[i], gt_vec[0][i], us_vec_aligned[0][i], diff[0][i], gt_vec[1][i], us_vec_aligned[1][i], diff[1][i]))
     
     ax = plt.gca()
     ax.scatter(gt_vec[0,:], gt_vec[1,:], marker='o', color='C0', s=100)
-    ax.scatter(us_vec_aligned[0,:], us_vec_aligned[1,:], marker='x', color='C1', s=100)
-    for i in range(len(taglist)):
-        ax.text(gt_vec[0,i]+0.05, gt_vec[1,i]+0.05, taglist[i], color='C0', size=12)
-        ax.text(us_vec_aligned[0,i]+0.05, us_vec_aligned[1,i]+0.05, taglist[i], color='C1', size=12)
+    ax.scatter(us_vec_aligned_pred[0,:], us_vec_aligned_pred[1,:], marker='x', color='C1', s=100)
+    for i in range(len(taglist_pred)):
+        # ax.text(gt_vec[0,i]+0.05, gt_vec[1,i]+0.05, taglist_pred[i], color='C0', size=12)
+        ax.text(us_vec_aligned_pred[0,i]+0.05, us_vec_aligned_pred[1,i]+0.05, taglist_pred[i], color='C1', size=12)
     plt.title('Arena')
     plt.xlabel('X')
     plt.ylabel('Y')
@@ -151,3 +191,22 @@ if __name__ == '__main__':
     plt.legend(['Real','Pred'])
     plt.grid()
     plt.show()
+
+
+    # for i in range(len(taglist)):
+    #     print('%3d %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f\n' % (taglist[i], gt_vec[0][i], us_vec_aligned[0][i], diff[0][i], gt_vec[1][i], us_vec_aligned[1][i], diff[1][i]))
+    
+    # ax = plt.gca()
+    # ax.scatter(gt_vec[0,:], gt_vec[1,:], marker='o', color='C0', s=100)
+    # ax.scatter(us_vec_aligned[0,:], us_vec_aligned[1,:], marker='x', color='C1', s=100)
+    # for i in range(len(taglist)):
+    #     ax.text(gt_vec[0,i]+0.05, gt_vec[1,i]+0.05, taglist[i], color='C0', size=12)
+    #     ax.text(us_vec_aligned[0,i]+0.05, us_vec_aligned[1,i]+0.05, taglist[i], color='C1', size=12)
+    # plt.title('Arena')
+    # plt.xlabel('X')
+    # plt.ylabel('Y')
+    # ax.set_xticks([-1.6, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.6])
+    # ax.set_yticks([-1.6, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.6])
+    # plt.legend(['Real','Pred'])
+    # plt.grid()
+    # plt.show()
