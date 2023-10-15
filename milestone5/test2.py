@@ -77,72 +77,72 @@ def estimate_pose(camera_matrix, completed_img_dict):
 # '''
 
 
-class aruco_detector:
-    def __init__(self, robot, marker_length=0.06):
-        self.camera_matrix = robot.camera_matrix
-        self.distortion_params = robot.camera_dist
+# class aruco_detector:
+#     def __init__(self, robot, marker_length=0.06):
+#         self.camera_matrix = robot.camera_matrix
+#         self.distortion_params = robot.camera_dist
 
-        self.marker_length = marker_length
-        self.aruco_params = cv2.aruco.DetectorParameters_create()
-        self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_100)
+#         self.marker_length = marker_length
+#         self.aruco_params = cv2.aruco.DetectorParameters_create()
+#         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_100)
     
-    def detect_marker_positions(self, corners,ids,marker_length,camera_matrix,distortion_params):
-        # Perform detection
-        # corners_1, ids_ori, rejected = cv2.aruco.detectMarkers(
-            # img, self.aruco_dict, parameters=self.aruco_params)
-        
-        # corners = [corner.tolist() for corner in corners]
-        # print("corners_1:")
-        # print(corners_1)
-        # print()
-        # print("corners:")
-        # print(np.array(corners))
+def detect_marker_positions( corners,ids,marker_length,camera_matrix,distortion_params):
+    # Perform detection
+    # corners_1, ids_ori, rejected = cv2.aruco.detectMarkers(
+        # img, self.aruco_dict, parameters=self.aruco_params)
+    
+    # corners = [corner.tolist() for corner in corners]
+    # print("corners_1:")
+    # print(corners_1)
+    # print()
+    # print("corners:")
+    # print(np.array(corners))
 
-        rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
-            corners, marker_length, camera_matrix, distortion_params)
-        
-        # print()
-        # print("ids:")
-        # print(ids)
-        # print()
-        # print("marker length:")
-        # print(marker_length)
-        # print()
-        if ids is None:
-            return [], img, []
+    rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
+        corners, marker_length, camera_matrix, distortion_params)
+    
+    # print()
+    # print("ids:")
+    # print(ids)
+    # print()
+    # print("marker length:")
+    # print(marker_length)
+    # print()
+    if ids is None:
+        return [], img, []
 
-        # Compute the marker positions
-        measurements = []
-        bounding_boxes = []  # Store bounding boxes here
-        seen_ids = []
-        for i in range(len(ids)):
-            idi = ids[i, 0]
-            # Some markers appear multiple times but should only be handled once.
-            if idi in seen_ids:
-                continue
-            else:
-                seen_ids.append(idi)
+    # Compute the marker positions
+    measurements = []
+    bounding_boxes = []  # Store bounding boxes here
+    seen_ids = []
+    for i in range(len(ids)):
+        idi = ids[i, 0]
+        # Some markers appear multiple times but should only be handled once.
+        if idi in seen_ids:
+            continue
+        else:
+            seen_ids.append(idi)
 
-            lm_tvecs = tvecs[ids == idi].T
-            lm_bff2d = np.block([[lm_tvecs[2, :]], [-lm_tvecs[0, :]]])
-            lm_bff2d = np.mean(lm_bff2d, axis=1).reshape(-1, 1)
+        lm_tvecs = tvecs[ids == idi].T
+        lm_bff2d = np.block([[lm_tvecs[2, :]], [-lm_tvecs[0, :]]])
+        lm_bff2d = np.mean(lm_bff2d, axis=1).reshape(-1, 1)
 
-            # Calculate the bounding box from the detected corners
-            bounding_box = cv2.boundingRect(corners[i][0])  # Get bounding box for the i-th marker
+        # Calculate the bounding box from the detected corners
+        bounding_box = cv2.boundingRect(corners[i][0])  # Get bounding box for the i-th marker
 
-            # Create a Marker object with measurement and bounding box
-            lm_measurement = measure.Marker(lm_bff2d, idi)
-            measurements.append(lm_measurement)
-            bounding_boxes.append(bounding_box)
+        # Create a Marker object with measurement and bounding box
+        lm_measurement = measure.Marker(lm_bff2d, idi)
+        measurements.append(lm_measurement)
+        bounding_boxes.append(bounding_box)
 
-        # Draw markers and bounding boxes on the image copy
-        img_marked = img.copy()
-        cv2.aruco.drawDetectedMarkers(img_marked, corners, ids)
-        for bbox in bounding_boxes:
-            x, y, w, h = bbox
-            cv2.rectangle(img_marked, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    # Draw markers and bounding boxes on the image copy
+    img_marked = img.copy()
+    cv2.aruco.drawDetectedMarkers(img_marked, corners, ids)
+    for bbox in bounding_boxes:
+        x, y, w, h = bbox
+        cv2.rectangle(img_marked, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        return measurements, img_marked, bounding_boxes
+    return measurements, img_marked, bounding_boxes
 
 if __name__ == "__main__":
     
@@ -168,25 +168,76 @@ if __name__ == "__main__":
 
 
 
-    base_dir = Path('./')
-    detector_output, network_vis = detc.detect_single_image(img)
+    # base_dir = Path('./')
+    # detector_output, network_vis = detc.detect_single_image(img)
+
     # print(detector_output)
     
+    # robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
+    # corners =[[[        486,         293],
+    #     [        436,         291],
+    #     [        437,         237],
+    #     [        487,         238.0]]]
+    # corners = (np.array(corners, dtype=np.float32),)
+
+    # ids = np.array([[3]])
+    
+
+
+    # landmarks, aruco_img, boundingbox = detect_marker_positions(corners=corners,ids=ids,marker_length = 0.06,camera_matrix = camera_matrix,distortion_params=dist_coeffs)
+
+    # imgplot = plt.imshow(aruco_img)
+    # plt.show()
+
+
+
+    base_dir = Path('./')
+    detector_output, network_vis = detc.detect_single_image(img)
+    print(detector_output)
+    
     robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
-    aruco_det = aruco_detector(robot, marker_length = 0.06)
-    corners =[[[        486,         293],
-        [        436,         291],
-        [        437,         237],
-        [        487,         238.0]]]
-    corners = (np.array(corners, dtype=np.float32),)
-
-    ids = np.array([[3]])
+    # aruco_det = aruco_detector(robot, marker_length = 0.06)
     
-    landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(corners=corners,ids=ids,marker_length = 0.06,camera_matrix = camera_matrix,distortion_params=dist_coeffs)
-
-    # landmarks, aruco_img, boundingbox =  detect_marker_positions(corners, ids = [[3]], marker_length=0.06, camera_matrix=camera_matrix, distortion_params=dist_coeffs)
-   
+    corners = []
+    ids = []
+    for i in range(len(detector_output)):
+        label = detector_output[i][0]
+        box_temp = detector_output[i][1]
+        
+        box = [box_temp[0]],[box_temp[1]],[box_temp[2]],[box_temp[3]]
+        # robot_coord = np.array([[-0.2   ],[0    ],[np.deg2rad(-90)]])
+        robot_coord = np.array([[0   ],[0    ],[np.deg2rad(0)]])
+        
+        print(box[0][0])
+        corners.append([[[box[0][0]+box[2][0]/2,box[1][0]+box[3][0]/2],
+                                    [box[0][0]-box[2][0]/2,box[1][0]+box[3][0]/2],
+                                    [box[0][0]-box[2][0]/2,box[1][0]-box[3][0]/2],
+                                    [box[0][0]+box[2][0]/2,box[1][0]-box[3][0]/2]]])
+        ids.append(int(label))
+        # completed_img_dict[int(label)] = {'target': np.array(box),
+        #                            'robot': robot_coord}
+        
+    corners = (np.array(corners[0], dtype=np.float32),)
+    ids = np.array([ids])
+    print()
+    print("before")
+    print(corners)
+    print(ids)
     
+    # corners =[[[        486,         293],
+    #     [        436,         291],
+    #     [        437,         237],
+    #     [        487,         238.0]]]
+    # corners = (np.array(corners, dtype=np.float32),)
+
+    # ids = np.array([[3]])
+    
+    # print()
+    # print("after")
+    # print(corners)
+    # print(ids)
+    
+    landmarks, aruco_img, boundingbox = detect_marker_positions(corners=corners,ids=ids,marker_length = 0.06,camera_matrix = camera_matrix,distortion_params=dist_coeffs)
 #     completed_img_dict ={}
 #     for i in range(len(detector_output)):
 #         label = detector_output[i][0]
@@ -207,22 +258,7 @@ if __name__ == "__main__":
 #     print(corner_points)
 #     # target_est = estimate_pose(camera_matrix, completed_img_dict)
 #     # detect_marker_positions(self, corners, ids)
-#     corner_points = [
-#     # Marker 1
-#     [
-#         [100, 100],
-#         [200, 100],
-#         [200, 200],
-#         [100, 200]
-#     ]
-#     # Marker 2
-#     # [
-#     #     [300, 100],
-#     #     [400, 100],
-#     #     [400, 200],
-#     #     [300, 200]
-#     # ]
-# ]
+
 #     corners = np.array(corner_points, dtype=np.float32)
 #     custom_marker_ids = np.array([1], dtype=np.int32)
 #     measurements, img_marked, bounding_boxes = detect_marker_positions(corners =  corners, ids=custom_marker_ids,marker_length= 0.095,camera_matrix=camera_matrix,distortion_params=dist_coeffs)
