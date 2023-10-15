@@ -4,11 +4,13 @@ import numpy as np
 from copy import deepcopy
 from ultralytics import YOLO
 from ultralytics.utils import ops
+import torch
 
 
 # Using detector class to match previous resnet version
 class Detector:
     def __init__(self, model_path):
+        torch.cuda.set_device(0)  # set to use gpu 
         self.model = YOLO(model_path)
 
         self.class_colour = {
@@ -43,11 +45,11 @@ class Detector:
             y1 = int(xyxy[1])
             x2 = int(xyxy[2])
             y2 = int(xyxy[3])
-            print(x1)
-            print(y1)
-            print(x2)
-            print(y2)
-            print()
+            # print(x1)
+            # print(y1)
+            # print(x2)
+            # print(y2)
+            # print()
 
             # draw bounding box
             img_out = cv2.rectangle(img_out, (x1, y1), (x2, y2), self.class_colour[box[0]], thickness=3)

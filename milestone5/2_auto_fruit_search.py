@@ -30,6 +30,8 @@ import generateWaypoints as wp
 import pathFind
 import pygame
 
+import fruit_detector
+
 ################################################################### USER INTERFACE ###################################################################
 class Operate:
     def __init__(self):
@@ -185,7 +187,7 @@ def initiate_UI():
     
     width, height = 700, 660
     canvas = pygame.display.set_mode((width, height))
-    pygame.display.set_caption('ECE4078 2022 Lab')
+    pygame.display.set_caption('ECE4078 2023 Lab')
     pygame.display.set_icon(pygame.image.load('pics/8bit/pibot5.png'))
     canvas.fill((0, 0, 0))
     splash = pygame.image.load('pics/loading.png')
@@ -392,15 +394,19 @@ def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang
 def take_and_analyse_picture():
     global aruco_img
     
-    img = ppi.get_image()
-    landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    # detector_output, img_yolov = yolov.detect_single_image(img)
-    detector_output =0
-    
-    # cv2.imshow('Predict',  aruco_img)
-    # cv2.waitKey(0)
+    global camera_matrix
+    global dist_coeffs
 
-    return landmarks, detector_output
+    img = ppi.get_image()
+    landmarks_aruco, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
+    
+    landmarks_fruits = fruit_detector.detect_fruit_landmark(yolov=yolov,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
+    landmarks_combined = []
+    landmarks_combined.extend(landmarks_aruco)
+    landmarks_combined.extend(landmarks_fruits)
+
+    return landmarks_combined
+
     # return landmarks, detector_output,aruco_corners
 
 def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
@@ -449,7 +455,7 @@ def get_robot_pose(drive_meas,servo_theta=0):
     # '''
     global robot_pose
     global landmarks # NEW Added
-    landmarks, detector_output = take_and_analyse_picture()
+    landmarks = take_and_analyse_picture()
     ekf.predict(drive_meas,servo_theta=servo_theta)
     ekf.add_landmarks(landmarks) 
     ekf.update(landmarks)
@@ -544,8 +550,9 @@ if __name__ == "__main__":
     global output_path
     output_path = dh.OutputWriter('lab_output')
     # neural network file location
-    # args.ckpt = "network/scripts/model/yolov8_model_best.pt"
-    # yolov = Detector(args.ckpt)
+    global yolov
+    args.ckpt = "network/scripts/model/yolov8_model_best.pt"
+    yolov = Detector(args.ckpt)
 
 ####################################################
     ## Set up all EKF using given values in true map
