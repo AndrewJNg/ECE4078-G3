@@ -61,7 +61,15 @@ class aruco_detector:
             img, self.aruco_dict, parameters=self.aruco_params)
         rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
             corners, self.marker_length, self.camera_matrix, self.distortion_params)
-
+        print("corners:")
+        print(corners)
+        print()
+        print("ids:")
+        print(ids)
+        print()
+        print("marker length:")
+        print(self.marker_length)
+        print()
         if ids is None:
             return [], img, []
 

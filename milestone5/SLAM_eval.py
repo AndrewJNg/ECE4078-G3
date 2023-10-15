@@ -49,11 +49,8 @@ def match_aruco_points_slam(aruco0 : dict, aruco1 : dict):
     points1 = []
     keys = []
     for key in aruco0:
-        # if not key in aruco0:
-        #     continue
         
         points0.append(aruco0[key])
-        # points1.append(aruco1[key])
         keys.append(key)
     return keys, np.hstack(points0)
 
@@ -110,6 +107,8 @@ def compute_rmse(points1, points2):
     return np.sqrt(MSE)
 
 
+
+
 if __name__ == '__main__':
     import argparse
 
@@ -131,6 +130,7 @@ if __name__ == '__main__':
     idx = np.argsort(taglist)
     taglist = np.array(taglist)[idx]
     us_vec = us_vec[:,idx]
+    print(us_vec)
     gt_vec = gt_vec[:, idx] 
 
     # using one known aruco, and known starting point at (0,0), estimate the transform 
