@@ -17,6 +17,7 @@ def detect_single_fruit_positions(img,corners,ids,marker_length,camera_matrix,di
     # Perform detection
     rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
         corners, marker_length, camera_matrix, distortion_params)
+    # print(tvecs)
     
     if ids is None:
         return [], img, []
@@ -90,9 +91,9 @@ def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
         corners = (np.array(corners[0], dtype=np.float32),)
         ids = np.array([ids])
         # print()
-        # print("before")
-        # print(corners)
-        # print(ids)
+        print("before")
+        print(corners)
+        print(ids)
         landmarks, aruco_img, boundingbox = detect_single_fruit_positions(img=img,corners=corners,ids=ids,marker_length = target_dimensions[int(label)-1][0],camera_matrix = camera_matrix,distortion_params=dist_coeffs)
         measurements.append(landmarks[0])
         
@@ -111,6 +112,7 @@ if __name__ == "__main__":
     # img = np.array(Image.open('network/scripts/image_0.png'))
     # img = np.array(Image.open('network/scripts/image_2.jpeg'))
     img = np.array(Image.open('network/scripts/image_3.png'))
+    # img = np.array(Image.open('network/scripts/image_4.png'))
     
     global dist_coeffs
     fileD = "calibration/param/distCoeffs.txt"

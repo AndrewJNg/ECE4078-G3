@@ -57,6 +57,8 @@ class Operate:
         # initialise images
         # self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.bg = pygame.image.load('pics/gui_mask.jpg')
+        self.clock = pygame.time.Clock()
+        self.clock.tick(30)
 
     # wheel control
     """def control(self):       
@@ -366,7 +368,6 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
         baseline = 12.5e-2
     elif abs(turn_angle) <=1.6: # ~90deg
         baseline = 10.2e-2
-
     elif abs(turn_angle) <=3.2: # ~180deg
         baseline = 9.0e-2
 
@@ -400,10 +401,19 @@ def take_and_analyse_picture():
     img = ppi.get_image()
     landmarks_aruco, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
     
+    # visualise
+    operate.draw(canvas)
+    pygame.display.update()
+
     landmarks_fruits = fruit_detector.detect_fruit_landmark(yolov=yolov,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
+
     landmarks_combined = []
     landmarks_combined.extend(landmarks_aruco)
     landmarks_combined.extend(landmarks_fruits)
+
+    # visualise
+    operate.draw(canvas)
+    pygame.display.update()
 
     return landmarks_combined
 
@@ -459,14 +469,6 @@ def get_robot_pose(drive_meas,servo_theta=0):
     ekf.predict(drive_meas,servo_theta=servo_theta)
     ekf.add_landmarks(landmarks) 
     ekf.update(landmarks)
-    # landmarks = []
-    # for i,landmark in enumerate(aruco_true_pos):
-    #     measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
-    #                                           tag = i+1,
-    #                                           covariance = (0.001*np.eye(2)))
-                                              
-    #     landmarks.append(measurement_landmark)
-    # ekf.update(landmarks) 
 
     robot_pose = ekf.robot.state.reshape(-1)
     # print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
@@ -594,6 +596,7 @@ if __name__ == "__main__":
     # localize([0.,0.])
     # localize([0.,0.])
     # '''
+    
     print(aruco_true_pos)
     waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos, log = 1)
     localize(10)
