@@ -539,7 +539,7 @@ if __name__ == "__main__":
     ## Robot connection setup
     # arguments for starting command
     parser = argparse.ArgumentParser("Fruit searching")
-    parser.add_argument("--map", type=str, default='M4_true_map.txt')
+    parser.add_argument("--map", type=str, default='M5_true_map.txt')
     parser.add_argument("--ip", metavar='', type=str, default='192.168.137.156')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--yolo", metavar='', type=int, default=0)
