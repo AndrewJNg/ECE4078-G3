@@ -12,6 +12,7 @@ import cv2
 import util.measure as measure
 import slam.aruco_detector as aruco
 from slam.robot import Robot
+import json
     
 def detect_single_fruit_positions(img,corners,ids,marker_length,camera_matrix,distortion_params):
     # Perform detection
@@ -54,6 +55,24 @@ def detect_single_fruit_positions(img,corners,ids,marker_length,camera_matrix,di
         cv2.rectangle(img_marked, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
     return measurements, img_marked, bounding_boxes
+
+def take_marker_pose(box,robot_pose):
+    global camera_matrix
+    # robot_pose = [0,0,0]
+    true_height = 0.06
+    focal_length = camera_matrix[0][0]
+    camera_offset = 0.110 #3.5cm
+
+    # print(box[0][3])
+    
+    ## ASSUMING ONLY 1 BOX
+    distance = focal_length * true_height/box[0][3]
+
+    x = robot_pose[0] + np.cos(robot_pose[2]) * (distance + camera_offset)
+    y = robot_pose[1] + np.sin(robot_pose[2]) * (distance + camera_offset) 
+    world_frame_pos = [x,y]
+
+    return world_frame_pos
 
 def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
     target_dimensions = [
@@ -122,9 +141,10 @@ if __name__ == "__main__":
     detc = Detector("network/scripts/model/yolov8_model_best.pt")
     # img = np.array(Image.open('network/scripts/image_0.png'))
     # img = np.array(Image.open('network/scripts/image_2.jpeg'))
-    img = np.array(Image.open('network/scripts/image_3.png'))
+    # img = np.array(Image.open('network/scripts/image_3.png'))
     # img = np.array(Image.open('network/scripts/image_4.png'))
     # img = np.array(Image.open('network/scripts/image_5.png'))
+    img = np.array(Image.open('network/scripts/image_6.png'))
     
     global dist_coeffs
     fileD = "calibration/param/distCoeffs.txt"
@@ -146,7 +166,24 @@ if __name__ == "__main__":
     robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
     aruco_det = aruco.aruco_detector(robot, marker_length = 0.06)
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    landmarks_aruco, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
+
+    landmarks_aruco, aruco_img, boundingbox, aruco_id = aruco_det.detect_marker_positions(img)
+
+    imgplot = plt.imshow(aruco_img)
+    plt.show()
+    
+    aruco_base_dict = {}
+    marker_pose = None
+    robot_pose = [0,0,90*np.pi/180]
+    if aruco_id:
+        x,y= take_marker_pose(boundingbox,robot_pose)
+        aruco_base_dict[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
+        
+    with open('lab_output/base_map.txt', 'w') as f:
+        json.dump(aruco_base_dict, f, indent=4)
+
+    # print(aruco_base_dict)
+
     print(f"aruco_landmarl: {landmarks_aruco}")
     # imgplot = plt.imshow(aruco_img)
     # plt.show()

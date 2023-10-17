@@ -64,4 +64,4 @@ class aruco_detector:
             x, y, w, h = bbox
             cv2.rectangle(img_marked, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        return measurements, img_marked, bounding_boxes
+        return measurements, img_marked, bounding_boxes,ids
