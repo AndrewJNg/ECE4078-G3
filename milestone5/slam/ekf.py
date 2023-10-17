@@ -22,6 +22,7 @@ class EKF:
         # Covariance matrix
         self.P = np.zeros((3,3))
         self.init_lm_cov = 1e3
+        # self.init_lm_cov = 1
         self.robot_init_state = None
         self.lm_pics = []
         for i in range(1, 11):
@@ -37,7 +38,7 @@ class EKF:
         self.taglist = []
         # Covariance matrix
         self.P = np.zeros((3,3))
-        self.init_lm_cov = 1e3
+        self.init_lm_cov = 1e-3
         self.robot_init_state = None
 
     def number_landmarks(self):

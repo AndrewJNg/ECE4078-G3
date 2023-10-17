@@ -20,43 +20,11 @@ class calibration:
     def image_collection(self, dataDir, images_to_collect):
         if self.command['image']:
             for i in range(images_to_collect):
-
-                # self.take_pic()
-                # cv2.waitKey(0)
-                filename = "calib_{}.png".format(i)
-                # while True:
-                
                 image = self.pibot.get_image()
-                # cv2.imshow(filename, image)
-                img_surface = pygame.surfarray.make_surface(image)
-                img_surface = pygame.transform.flip(img_surface, True, False)
-                img_surface = pygame.transform.rotozoom(img_surface, 90, 1)
-                canvas.blit(img_surface, (0, 0))
-                # pygame.display.update()
-                    
-                    # calib.update_keyboard()
-
-
-
-                    # if cv2.waitKey(0):
-                    #     break
-
-                # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-                # cv2.imwrite(filename, image)
-                
-                # while(cv2.waitKey(-1)):
-
-                # cv2.imshow(filename, image)
-                # cv2.waitKey(0)
-                # cv2.waitKey(500)
-                
-                # img_surface = pygame.surfarray.make_surface(calib.img)
-                # img_surface = pygame.transform.flip(img_surface, True, False)
-                # img_surface = pygame.transform.rotozoom(img_surface, 90, 1)
-                # canvas.blit(img_surface, (0, 0))
-                # pygame.display.update()
-
-            # self.finish = True
+                filename = "calib_{}.png".format(i)
+                # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                cv2.imwrite(filename, image)
+            self.finish = True
 
     def update_keyboard(self):
         for event in pygame.event.get():
@@ -90,7 +58,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", metavar='', type=str, default='localhost')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.47')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     args, _ = parser.parse_known_args()
 
@@ -99,7 +67,7 @@ if __name__ == "__main__":
     if not os.path.exists(dataDir):
         os.makedirs(dataDir)
     
-    images_to_collect = 2
+    images_to_collect = 1
 
     calib = calibration(args)
 
@@ -116,8 +84,13 @@ if __name__ == "__main__":
         
         calib.update_keyboard()
         calib.control()
+        calib.take_pic()
         calib.image_collection(dataDir, images_to_collect)
-        
+        img_surface = pygame.surfarray.make_surface(calib.img)
+        img_surface = pygame.transform.flip(img_surface, True, False)
+        img_surface = pygame.transform.rotozoom(img_surface, 90, 1)
+        canvas.blit(img_surface, (0, 0))
+        pygame.display.update()
     print('Finished image collection.\n')
 
 

@@ -30,6 +30,8 @@ import generateWaypoints as wp
 import pathFind
 import pygame
 
+import fruit_detector
+
 ################################################################### USER INTERFACE ###################################################################
 class Operate:
     def __init__(self):
@@ -55,6 +57,8 @@ class Operate:
         # initialise images
         # self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.bg = pygame.image.load('pics/gui_mask.jpg')
+        self.clock = pygame.time.Clock()
+        self.clock.tick(30)
 
     # wheel control
     """def control(self):       
@@ -185,7 +189,7 @@ def initiate_UI():
     
     width, height = 700, 660
     canvas = pygame.display.set_mode((width, height))
-    pygame.display.set_caption('ECE4078 2022 Lab')
+    pygame.display.set_caption('ECE4078 2023 Lab')
     pygame.display.set_icon(pygame.image.load('pics/8bit/pibot5.png'))
     canvas.fill((0, 0, 0))
     splash = pygame.image.load('pics/loading.png')
@@ -312,18 +316,16 @@ def angleToPulse(angle):
     #         print()
     #         print("next")
     #         x = input("input, pulse: ")
-    #         # drive_to_point(sub_waypoint)
-    #         pygame.display.update()
     #         ppi.set_servo(int(x))
+
     #     except:
-    #         if(str(x)=='z' or str(y) =='z'):
+    #         if(str(x)=='z'):
     #             break
     #         print("enter again")
-    #     pygame.display.update()
 
     #calibration
     xp= [-90*np.pi/180,-45*np.pi/180,0*np.pi/180,45*np.pi/180,90*np.pi/180]
-    yp= [495,900,1360,1800,2350]
+    yp= [570,1100,1650,2150,2700]
     
     pulse = int(np.interp(angle,xp,yp))
     # print(pulse)
@@ -366,7 +368,6 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
         baseline = 12.5e-2
     elif abs(turn_angle) <=1.6: # ~90deg
         baseline = 10.2e-2
-
     elif abs(turn_angle) <=3.2: # ~180deg
         baseline = 9.0e-2
 
@@ -394,15 +395,28 @@ def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang
 def take_and_analyse_picture():
     global aruco_img
     
-    img = ppi.get_image()
-    landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    # detector_output, img_yolov = yolov.detect_single_image(img)
-    detector_output =0
-    
-    # cv2.imshow('Predict',  aruco_img)
-    # cv2.waitKey(0)
+    global camera_matrix
+    global dist_coeffs
 
-    return landmarks, detector_output
+    img = ppi.get_image()
+    landmarks_aruco, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
+    
+    # visualise
+    operate.draw(canvas)
+    pygame.display.update()
+
+    landmarks_fruits = fruit_detector.detect_fruit_landmark(yolov=yolov,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
+
+    landmarks_combined = []
+    landmarks_combined.extend(landmarks_aruco)
+    landmarks_combined.extend(landmarks_fruits)
+
+    # visualise
+    operate.draw(canvas)
+    pygame.display.update()
+
+    return landmarks_combined
+
     # return landmarks, detector_output,aruco_corners
 
 def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
@@ -451,18 +465,10 @@ def get_robot_pose(drive_meas,servo_theta=0):
     # '''
     global robot_pose
     global landmarks # NEW Added
-    landmarks, detector_output = take_and_analyse_picture()
+    landmarks = take_and_analyse_picture()
     ekf.predict(drive_meas,servo_theta=servo_theta)
     ekf.add_landmarks(landmarks) 
     ekf.update(landmarks)
-    # landmarks = []
-    # for i,landmark in enumerate(aruco_true_pos):
-    #     measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
-    #                                           tag = i+1,
-    #                                           covariance = (0.001*np.eye(2)))
-                                              
-    #     landmarks.append(measurement_landmark)
-    # ekf.update(landmarks) 
 
     robot_pose = ekf.robot.state.reshape(-1)
     # print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
@@ -543,9 +549,12 @@ if __name__ == "__main__":
     fileB = "calibration/param/baseline.txt"
     baseline = np.loadtxt(fileB, delimiter=',')
 
+    global output_path
+    output_path = dh.OutputWriter('lab_output')
     # neural network file location
-    # args.ckpt = "network/scripts/model/yolov8_model_best.pt"
-    # yolov = Detector(args.ckpt)
+    global yolov
+    args.ckpt = "network/scripts/model/yolov8_model_best.pt"
+    yolov = Detector(args.ckpt)
 
 ####################################################
     ## Set up all EKF using given values in true map
@@ -556,13 +565,13 @@ if __name__ == "__main__":
     ppi.set_servo(angleToPulse(0*np.pi/180))
     
 
-    landmarks = []
-    for i,landmark in enumerate(aruco_true_pos):
-        measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
-                                              tag = i+1)
+    # landmarks = []
+    # for i,landmark in enumerate(aruco_true_pos):
+    #     measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
+    #                                           tag = i+1)
                                               
-        landmarks.append(measurement_landmark)
-    ekf.add_landmarks(landmarks)
+    #     landmarks.append(measurement_landmark)
+    # ekf.add_landmarks(landmarks)
 
     search_list = read_search_list()
     print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
@@ -587,6 +596,8 @@ if __name__ == "__main__":
     # localize([0.,0.])
     # localize([0.,0.])
     # '''
+    
+    print(aruco_true_pos)
     waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos, log = 1)
     localize(10)
     for waypoint_progress in range(3):
@@ -619,11 +630,32 @@ if __name__ == "__main__":
                 localize(10)
             else:
                 pass       
+        
+        output_path.write_map(ekf)
 
+        
         print(f"######################################################################")
         print(f"Visited Fruit {waypoint_progress+1}")
         print(f"######################################################################")
         ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
+
+
+        
+    
+    # if command['output']:
+        # self.notification = 'Map is saved'
+        # self.command['output'] = False
+    # save inference with the matching robot pose and detector labels
+    # if self.command['save_inference']:
+    #     if self.file_output is not None:
+    #         #image = cv2.cvtColor(self.file_output[0], cv2.COLOR_RGB2BGR)
+    #         self.pred_fname = self.output.write_image(self.file_output[0],
+    #                                                 self.file_output[1])
+    #         self.notification = f'Prediction is saved to {operate.pred_fname}'
+    #     else:
+    #         self.notification = f'No prediction in buffer, save ignored'
+    #     self.command['save_inference'] = False
+
     # '''
 
 
