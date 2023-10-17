@@ -7,7 +7,7 @@ import ast
 import numpy as np
 
 
-def getPath(dist_to_fruit, start_pos, fruits_arr, obstacles_arr, fruit_order):
+def getPath(dist_to_fruit, rorbot_pose, fruits_arr, fruit_order):
     """
     Returns: 
         - `2D arr` with 3 coordinates
@@ -24,14 +24,11 @@ def getPath(dist_to_fruit, start_pos, fruits_arr, obstacles_arr, fruit_order):
     # Find all possible location to take fruit
     # Choose shortest
     final_visit_pos = []
-    min_dir_arr  = [] # TODO comment
+    # min_dir_arr  = [] # TODO comment
     for index, currentFruit in enumerate(fruits_arr):
         # print(f'\n{fruit_order[index]}') # Debug
-        # Get start position
-        if index-1 >= 0:
-            x_i, y_i = fruits_arr[index-1][0], fruits_arr[index-1][1]
-        else:
-            x_i, y_i = start_pos[0], start_pos[1]
+        # Get current pos
+        x_i, y_i = rorbot_pose[0], rorbot_pose[1]
 
         # Get fruit position
         x0, y0 = currentFruit
@@ -69,7 +66,7 @@ def getPath(dist_to_fruit, start_pos, fruits_arr, obstacles_arr, fruit_order):
     return final_visit_pos
 
 # Based on search order, generate fruit_arr and obstacles_arr containing fruit position
-def getFruitArr(search_list, fruit_list, fruit_true_pos, obstacles_arr):
+def getFruitArr(search_list, fruit_list, fruit_true_pos):
     search_fruits = []
     # markerNum = len(obstacles_arr)
     # search_fruits = [[0] * 2 for i in range(len(search_list))]
@@ -80,11 +77,8 @@ def getFruitArr(search_list, fruit_list, fruit_true_pos, obstacles_arr):
                     search_fruits = np.array([fruit_true_pos[j]])
                 else:
                     search_fruits = np.append(search_fruits, [fruit_true_pos[j]], axis=0)
-                
-            else:
-                obstacles_arr = np.append(obstacles_arr, [fruit_true_pos[j]], axis=0)
-                pass
-    return search_fruits, obstacles_arr
+
+    return search_fruits
 
 def round_to_accuracy(number, accuracy=0.4):
     if accuracy <= 0:
@@ -175,9 +169,8 @@ def getFromFile(fname):
     return search_list, fruits_list, fruits_true_pos, aruco_true_pos
 
 # Main function
-def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_true_pos={}):
+def generateWaypoints(robot_pose = [0.,0.,0.], search_list={}, fruits_list={}, fruits_true_pos={}):
     # Define params:
-    start_pos = [0,0]   # start pos
     dist_to_fruit = 0.2     # distance when robot will take picture from fruit
 
     debug = 0
@@ -190,11 +183,11 @@ def generateWaypoints(search_list={}, fruits_list={}, fruits_true_pos={}, aruco_
         else:
             fname = 'M5_est_map.txt'
             print('Reading from estimate SLAM map')
-        search_list, fruits_list, fruits_true_pos, aruco_true_pos = getFromFile(fname)
+        search_list, fruits_list, fruits_true_pos, _ = getFromFile(fname)
     
     # Extracting data from param
-    search_fruits, obstacles_arr = getFruitArr(search_list, fruits_list, fruits_true_pos, aruco_true_pos)
-    waypoints = getPath(dist_to_fruit, start_pos, search_fruits, obstacles_arr, search_list)
+    search_fruits = getFruitArr(search_list, fruits_list, fruits_true_pos)
+    waypoints = getPath(dist_to_fruit, robot_pose, search_fruits, search_list)
     
     # Debug
     # print(f'########## Debug ##########\nsearch_list:\n{search_list}\n\nfruits_list:\n{fruits_list}\n\nfruits_true_pos:\n{fruits_true_pos}\n\naruco_true_pos:\n{aruco_true_pos}\n\n')

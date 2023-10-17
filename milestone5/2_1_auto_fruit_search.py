@@ -1,4 +1,5 @@
 # M4 - Autonomous fruit searching
+# New: Update pathfinding
 
 # basic python packages
 import sys, os
@@ -312,18 +313,16 @@ def angleToPulse(angle):
     #         print()
     #         print("next")
     #         x = input("input, pulse: ")
-    #         # drive_to_point(sub_waypoint)
-    #         pygame.display.update()
     #         ppi.set_servo(int(x))
+
     #     except:
-    #         if(str(x)=='z' or str(y) =='z'):
+    #         if(str(x)=='z'):
     #             break
     #         print("enter again")
-    #     pygame.display.update()
 
     #calibration
     xp= [-90*np.pi/180,-45*np.pi/180,0*np.pi/180,45*np.pi/180,90*np.pi/180]
-    yp= [495,900,1360,1800,2350]
+    yp= [570,1100,1650,2150,2700]
     
     pulse = int(np.interp(angle,xp,yp))
     # print(pulse)
@@ -393,21 +392,19 @@ def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang
 ################################################################### Pictures and model ###################################################################
 def take_and_analyse_picture():
     global aruco_img
-    
+
     img = ppi.get_image()
     landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    
-    if use_yolo:
-        # Append fruits to landmarks
-        target_est, network_vis = detect.fruit_detect(yolov, camera_matrix, img, robot_pose) #TODO Get network_vis to visualize
-        if target_est:
-            print(target_est)
-            for id, fruit_pos in target_est.items(): 
-                fruit_measurement = measure.Marker(np.array([[fruit_pos['x']],[fruit_pos['y']]]), id)
-                # measure.Marker(position = np.array([[fruit_pos['x']],[fruit_pos['y']]]), tag = i+1)
-                
-                landmarks.append(fruit_measurement)
-        # print(landmark)
+    # Append fruits to landmarks
+    target_est, network_vis = detect.fruit_detect(yolov, camera_matrix, img, robot_pose)
+    if target_est:
+        print(target_est)
+        for id, fruit_pos in target_est.items(): 
+            fruit_measurement = measure.Marker(np.array([[fruit_pos['x']],[fruit_pos['y']]]), id)
+            # measure.Marker(position = np.array([[fruit_pos['x']],[fruit_pos['y']]]), tag = i+1)
+            
+            landmarks.append(fruit_measurement)
+    # print(landmark)
     # cv2.imshow('Predict',  aruco_img)
     # cv2.waitKey(0)
 
@@ -480,7 +477,7 @@ def localize(increment_angle = 5): # turn and call get_robot_pose
     
     landmark_counter = 0
     lv,rv=ppi.set_velocity([0, 0], turning_tick=30, time=0.8) # immediate stop with small delay
-    drive_meas = measure.Drive(lv,rv,0.8)
+    drive_meas = measure.Drive(lv,rv,0.8,left_cov=0.00001,right_cov=0.00001)
 
     # look right first
     ppi.set_servo(angleToPulse(-90*np.pi/180))
@@ -507,18 +504,36 @@ def localize(increment_angle = 5): # turn and call get_robot_pose
     # print(f"Landmarks: {landmark_counter}")
     return landmark_counter
     
-def isFruitClose(robot_pose, fruits_true_pos, max_dist_to_fruit):
-    x_rob, y_rob = robot_pose[0], robot_pose[1]
+def getPath(available_waypoints_with_dist):
+    temp_paths = [50 for z in range(len(available_waypoints_with_dist))]
+    turn_arr = [50 for z in range(len(available_waypoints_with_dist))]
+    current_start_pos = [robot_pose[0],robot_pose[1]]
+    for i, (pose, dist) in enumerate(available_waypoints_with_dist):
+        temp_paths[i], turns = pathFind.main(current_start_pos, pose, fruits_true_pos)
+        turn_arr[i] = turns
+    # Find index of least turn path
+    min_turn = 50
+    min_turn_dist = 50
+    index_min_turn = -1
+    for j, turns in enumerate(turn_arr):
+        if turns < min_turn:
+            min_turn = turns
+            min_turn_dist = dist
+            index_min_turn = j
+        elif turns == min_turn: # If number of turns is equal
+            if dist < min_turn_dist: # If distance is lesser, update path to be best path
+                min_turn_dist = dist
+                index_min_turn = j
+
+    # Assign current path and waypoint using index found
+    path = temp_paths[index_min_turn]
+    # Pop first position
+    path.pop(0)
+    # waypoints.append(available_waypoints_with_dist[index_min_turn][0])
     
-    for (x_fruit, y_fruit) in fruits_true_pos:
-        dist = math.hypot(abs(x_fruit - x_rob) + abs(y_fruit - y_rob))
-        if dist < max_dist_to_fruit:
-            return True
-        
-    return False
+    return path, min_turn
 
-
-################################################################### Main ###################################################################
+################################################################### Main  ###################################################################
 # main loop
 if __name__ == "__main__":
     ## Robot connection setup
@@ -527,6 +542,7 @@ if __name__ == "__main__":
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
     parser.add_argument("--ip", metavar='', type=str, default='192.168.137.47')
     parser.add_argument("--port", metavar='', type=int, default=8000)
+    parser.add_argument("--yolo", metavar='', type=int, default=0)
     parser.add_argument("--ckpt", metavar='', type=str, default='network/scripts/model/yolov8_model_best.pt')
 
     args, _ = parser.parse_known_args()
@@ -557,8 +573,9 @@ if __name__ == "__main__":
     fileB = "calibration/param/baseline.txt"
     baseline = np.loadtxt(fileB, delimiter=',')
 
+    global output_path
+    output_path = dh.OutputWriter('lab_output')
     # neural network file location
-    global use_yolo
     global yolov
     yolov = Detector(args.ckpt)
 
@@ -570,18 +587,6 @@ if __name__ == "__main__":
     ekf = EKF(robot)
     ppi.set_servo(angleToPulse(0*np.pi/180))
     
-
-    # # TODO Add fruit into add_landmarks etc.
-    # landmarks = []
-    # for i,landmark in enumerate(aruco_true_pos):
-    #     measurement_landmark = measure.Marker(position = np.array([[landmark[0]],[landmark[1]]]),
-    #                                           tag = i+1)
-                                              
-    #     landmarks.append(measurement_landmark)
-    # ekf.add_landmarks(landmarks)
-
-    # ekf.load_map("./lab_output/slam.txt")
-
     search_list = read_search_list()
     print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
     # print('Fruit list:\n {}\n'.format(fruits_list))
@@ -597,58 +602,28 @@ if __name__ == "__main__":
 ####################################################
     global robot_pose
     robot_pose = [0.,0.,0.]
-
 ########################################   A* CODE INTEGRATED ##################################################
-    waypoints_compiled = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos)
+    waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
     # Note: waypoints are now in format of [[[pose, dist],[],[],[]], [[],[],[],[]], [[],[],[],[]]] to choose least turns needed to reach waypoint
     
-    # localize(10)
-    waypoints = [[0,0]]
-    for fruit_progress, available_waypoints_with_dist in enumerate(waypoints_compiled):
-        # Extract path with min_turn
-        # Loop through each possible position to each fruit
-        temp_paths = [[] for z in range(len(available_waypoints_with_dist))]
-        turn_arr = [50 for z in range(len(available_waypoints_with_dist))]
-        current_start_pos = waypoints[fruit_progress]
-        for i, (pose, dist) in enumerate(available_waypoints_with_dist):
-            temp_paths[i], turns = pathFind.main(current_start_pos, pose, fruits_true_pos)
-            turn_arr[i] = turns
-        # Find index of least turn path
-        min_turn = 50
-        min_turn_dist = 50
-        index_min_turn = -1
-        for j, turns in enumerate(turn_arr):
-            if turns < min_turn:
-                min_turn = turns
-                min_turn_dist = dist
-                index_min_turn = j
-            elif turns == min_turn: # If number of turns is equal
-                if dist < min_turn_dist: # If distance is lesser, update path to be best path
-                    min_turn_dist = dist
-                    index_min_turn = j
+    localize(10)
+    waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
+    for fruit_progress in range(len(fruits_list)):
+        available_waypoints_with_dist = waypoints_compiled[fruit_progress]
 
-        # Assign current path and waypoint using index found
-        path = temp_paths[index_min_turn]
-        waypoints.append(available_waypoints_with_dist[index_min_turn][0])
-        # Pop first position
-        path.pop(0)
-        # Append last position if current path is path to last fruit 
-        if fruit_progress == 2:
-            path.append(path[-1])
-        print(f'Path: {path}')
-        
-
-        #### Main Algorithm ####
+        # Get initial path
+        path, min_turn = getPath(available_waypoints_with_dist)
+        print(f'Initial Path: {path}')
+        print(f'Turns for path: {min_turn}')
 
         #### Start Localizing on Origin ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
         localize(10)
 
+        #### Main Algorithm ####
         for i, sub_waypoint in enumerate(path, 3):
             # Drive to segmented waypoints
             # operate.draw(canvas)
-            use_yolo = isFruitClose(robot_pose, fruits_true_pos, max_dist_to_fruit = 0.4)
-
             pygame.display.update()
             print("    ")
             print("Target: "+str(sub_waypoint))
@@ -661,10 +636,93 @@ if __name__ == "__main__":
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
                 localize(10)
 
+            ## Update Positions and Target Waypoints##
+            # Get updated fruit pos & obstacle pos
+            fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
+            # Get updated waypoints
+            waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
+            available_waypoints_with_dist = waypoints_compiled[fruit_progress]
+            # Get update path
+            path, min_turn = getPath(available_waypoints_with_dist)
+
+            print(f'Path: {path}')
+            print(f'Turns left: {min_turn}')
+        
+        output_path.write_map(ekf)
+        
         print(f"######################################################################")
         print(f"Visited Fruit {fruit_progress+1}")
         print(f"######################################################################")
         ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
 
+    """for fruit_progress, available_waypoints_with_dist in enumerate(waypoints_compiled):
+        # available_waypoints_with_dist format = [[pose, dist],[],[],[]]
+        # #### Extract path with min_turn ####
+        # # Loop through each possible position to each fruit
+        # temp_paths = [50 for z in range(len(available_waypoints_with_dist))]
+        # turn_arr = [50 for z in range(len(available_waypoints_with_dist))]
+        # current_start_pos = [robot_pose[0], robot_pose[1]]
+        # for i, (pose, dist) in enumerate(available_waypoints_with_dist):
+        #     temp_paths[i], turns = pathFind.main(current_start_pos, pose, fruits_true_pos)
+        #     turn_arr[i] = turns
+        # # Find index of least turn path
+        # min_turn = 50
+        # min_turn_dist = 50
+        # index_min_turn = -1
+        # for j, turns in enumerate(turn_arr):
+        #     if turns < min_turn:
+        #         min_turn = turns
+        #         min_turn_dist = dist
+        #         index_min_turn = j
+        #     elif turns == min_turn: # If number of turns is equal
+        #         if dist < min_turn_dist: # If distance is lesser, update path to be best path
+        #             min_turn_dist = dist
+        #             index_min_turn = j
+
+        # # Assign current path and waypoint using index found
+        # path = temp_paths[index_min_turn]
+        # waypoints.append(available_waypoints_with_dist[index_min_turn][0])
+
+        # Get initial path
+        path, min_turn = getPath(available_waypoints_with_dist)
+        print(f'Initial Path: {path}')
+        print(f'Turns for path: {min_turn}')
 
 
+        #### Start Localizing on Origin ####
+        robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+        localize(10)
+
+
+        #### Main Algorithm ####
+        for i, sub_waypoint in enumerate(path, 3):
+            # Drive to segmented waypoints
+            # operate.draw(canvas)
+            pygame.display.update()
+            print("    ")
+            print("Target: "+str(sub_waypoint))
+            drive_to_point(sub_waypoint)
+            print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
+            landmark_counter = localize(30)
+            if landmark_counter == 0: # If seen markers not more than 2
+                print(f"Seen 0 landmarks during localize ({landmark_counter}). Localize agian")
+                # Turn 180 deg and localize
+                robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+                localize(10)
+
+            ## Update Positions and Target Waypoints##
+            # Get updated fruit pos & obstacle pos
+            fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
+            # Get updated waypoints
+            waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
+            # Get update path
+            path, min_turn = getPath(available_waypoints_with_dist)
+            # print(f'Path: {path}')
+            # print(f'Turns left: {min_turn}')
+        
+        output_path.write_map(ekf)
+        
+        print(f"######################################################################")
+        print(f"Visited Fruit {fruit_progress+1}")
+        print(f"######################################################################")
+        ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay"""

@@ -1,5 +1,5 @@
 # M4 - Autonomous fruit searching
-
+# Stable
 # basic python packages
 import sys, os
 import cv2
@@ -391,22 +391,19 @@ def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang
 ################################################################### Pictures and model ###################################################################
 def take_and_analyse_picture():
     global aruco_img
-    global use_yolo
 
     img = ppi.get_image()
     landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    use_yolo = 0
-    if use_yolo:
-        # Append fruits to landmarks
-        target_est, network_vis = detect.fruit_detect(yolov, camera_matrix, img, robot_pose)
-        if target_est:
-            print(target_est)
-            for id, fruit_pos in target_est.items(): 
-                fruit_measurement = measure.Marker(np.array([[fruit_pos['x']],[fruit_pos['y']]]), id)
-                # measure.Marker(position = np.array([[fruit_pos['x']],[fruit_pos['y']]]), tag = i+1)
-                
-                landmarks.append(fruit_measurement)
-        # print(landmark)
+    # Append fruits to landmarks
+    target_est, network_vis = detect.fruit_detect(yolov, camera_matrix, img, robot_pose)
+    if target_est:
+        print(target_est)
+        for id, fruit_pos in target_est.items(): 
+            fruit_measurement = measure.Marker(np.array([[fruit_pos['x']],[fruit_pos['y']]]), id)
+            # measure.Marker(position = np.array([[fruit_pos['x']],[fruit_pos['y']]]), tag = i+1)
+            
+            landmarks.append(fruit_measurement)
+    # print(landmark)
     # cv2.imshow('Predict',  aruco_img)
     # cv2.waitKey(0)
 
@@ -512,7 +509,7 @@ if __name__ == "__main__":
     ## Robot connection setup
     # arguments for starting command
     parser = argparse.ArgumentParser("Fruit searching")
-    parser.add_argument("--map", type=str, default='M4_true_map.txt')
+    parser.add_argument("--map", type=str, default='M5_true_map.txt')
     parser.add_argument("--ip", metavar='', type=str, default='192.168.137.47')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--yolo", metavar='', type=int, default=0)
@@ -549,11 +546,8 @@ if __name__ == "__main__":
     global output_path
     output_path = dh.OutputWriter('lab_output')
     # neural network file location
-    global use_yolo
     global yolov
-    use_yolo = 0
-    if args.yolo:
-        yolov = Detector(args.ckpt)
+    yolov = Detector(args.ckpt)
 
 ####################################################
     ## Set up all EKF using given values in true map
