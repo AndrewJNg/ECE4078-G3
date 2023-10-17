@@ -31,6 +31,8 @@ import util.measure as measure
 import pathFind
 import pygame
 
+import fruit_detector
+
 ################################################################### USER INTERFACE ###################################################################
 class Operate:
     def __init__(self):
@@ -56,6 +58,8 @@ class Operate:
         # initialise images
         # self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.bg = pygame.image.load('pics/gui_mask.jpg')
+        self.clock = pygame.time.Clock()
+        self.clock.tick(30)
 
     # wheel control
     """def control(self):       
@@ -186,7 +190,7 @@ def initiate_UI():
     
     width, height = 700, 660
     canvas = pygame.display.set_mode((width, height))
-    pygame.display.set_caption('ECE4078 2022 Lab')
+    pygame.display.set_caption('ECE4078 2023 Lab')
     pygame.display.set_icon(pygame.image.load('pics/8bit/pibot5.png'))
     canvas.fill((0, 0, 0))
     splash = pygame.image.load('pics/loading.png')
@@ -380,7 +384,6 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
         baseline = 12.5e-2
     elif abs(turn_angle) <=1.6: # ~90deg
         baseline = 10.2e-2
-
     elif abs(turn_angle) <=3.2: # ~180deg
         baseline = 9.0e-2
 
@@ -407,23 +410,28 @@ def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang
 ################################################################### Pictures and model ###################################################################
 def take_and_analyse_picture():
     global aruco_img
+    
+    global camera_matrix
+    global dist_coeffs
 
     img = ppi.get_image()
-    landmarks, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    # Append fruits to landmarks
-    target_est, network_vis = detect.fruit_detect(yolov, camera_matrix, img, robot_pose)
-    if target_est:
-        print(target_est)
-        for id, fruit_pos in target_est.items(): 
-            fruit_measurement = measure.Marker(np.array([[fruit_pos['x']],[fruit_pos['y']]]), id)
-            # measure.Marker(position = np.array([[fruit_pos['x']],[fruit_pos['y']]]), tag = i+1)
-            
-            landmarks.append(fruit_measurement)
-    # print(landmark)
-    # cv2.imshow('Predict',  aruco_img)
-    # cv2.waitKey(0)
+    landmarks_aruco, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
+    
+    # visualise
+    operate.draw(canvas)
+    pygame.display.update()
 
-    return landmarks, 0
+    landmarks_fruits = fruit_detector.detect_fruit_landmark(yolov=yolov,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
+
+    landmarks_combined = []
+    landmarks_combined.extend(landmarks_aruco)
+    landmarks_combined.extend(landmarks_fruits)
+
+    # visualise
+    operate.draw(canvas)
+    pygame.display.update()
+
+    return landmarks
     # return landmarks, detector_output,aruco_corners
 
 def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
@@ -471,8 +479,8 @@ def get_robot_pose(drive_meas,servo_theta=0):
     ## method 2: Using SLAM through EKF filtering
     # '''
     global robot_pose
-    global landmarks
-    landmarks, detector_output = take_and_analyse_picture()
+    global landmarks # NEW Added
+    landmarks = take_and_analyse_picture()
     ekf.predict(drive_meas,servo_theta=servo_theta)
     ekf.add_landmarks(landmarks)
     ekf.update(landmarks)
