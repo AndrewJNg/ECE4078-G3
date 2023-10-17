@@ -240,15 +240,10 @@ def read_true_map(fname):
 
         # remove unique id of targets of the same type
         for key in gt_dict:
-            x = np.round(gt_dict[key]['x'], 1)
-            y = np.round(gt_dict[key]['y'], 1)
+            x = gt_dict[key]['x']
+            y = gt_dict[key]['y']
 
-            id = int(key[-2:])
-
-            if len(key) != 7 or id > 15:
-                continue
-            
-            if id <= 10:
+            if key.startswith('aruco'):
                 if key.startswith('aruco10'):
                     aruco_true_pos[9][0] = x
                     aruco_true_pos[9][1] = y
@@ -257,17 +252,7 @@ def read_true_map(fname):
                     aruco_true_pos[marker_id-1][0] = x
                     aruco_true_pos[marker_id-1][1] = y
             else:
-                if id == 11:
-                    fruit_list.append('redapple')
-                elif id == 12:
-                    fruit_list.append('greenapple')
-                elif id == 13:
-                    fruit_list.append('orange')
-                elif id == 14:
-                    fruit_list.append('mango')
-                elif id == 15:
-                    fruit_list.append('capsicum')
-
+                fruit_list.append(key[:-2])
                 if len(fruit_true_pos) == 0:
                     fruit_true_pos = np.array([[x, y]])
                 else:
@@ -562,7 +547,7 @@ if __name__ == "__main__":
     ## Robot connection setup
     # arguments for starting command
     parser = argparse.ArgumentParser("Fruit searching")
-    parser.add_argument("--map", type=str, default='M5_true_map.txt')
+    parser.add_argument("--map", type=str, default='M4_true_map.txt')
     parser.add_argument("--ip", metavar='', type=str, default='192.168.137.156')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--yolo", metavar='', type=int, default=0)
