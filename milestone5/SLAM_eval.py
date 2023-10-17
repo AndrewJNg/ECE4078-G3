@@ -109,70 +109,74 @@ def compute_rmse(points1, points2):
 
 def convertArrayToMap(taglist_pred,array):
     # print(taglist_pred)
+    # print(array)
     map_dict = {}
     for i in taglist_pred:
-        if i >15 or i==0:
-            continue
-        map_dict[f'aruco{i}_0'] = {'x': array[0][i],'y': array[1][i]}
+        # print(taglist_pred)
+        index=np.where(taglist_pred==i)
+        index = index[0][0]
+        # print(index)
+        if (i==0):
+            pass
+        elif i ==11:
+            map_dict["redapple_0"] = {'x': array[0][index],'y': array[1][index]}
+        elif i ==12:
+            map_dict["greenapple_0"] = {'x': array[0][index],'y': array[1][index]}
+        elif i ==13:
+            map_dict["orange_0"] = {'x': array[0][index],'y': array[1][index]}
+        elif i ==14:
+            map_dict["mango_0"] = {'x': array[0][index],'y': array[1][index]}
+        elif i ==15:
+            map_dict["capsicum_0"] = {'x': array[0][index],'y': array[1][index]}
+        elif i<=10:
+            map_dict[f'aruco{i}_0'] = {'x': array[0][index],'y': array[1][index]}
+        
         
     return map_dict
 
 
 def addFruitToMap(taglist_pred,array):
 
+    # taglist_pred = [1,2,3,4,6,8,10,13,15,69]
+    # array = 
     # print(taglist_pred)
     map_dict = {}
     for i in taglist_pred:
+        # print(taglist_pred)
+        index=np.where(taglist_pred==i)
+        index = index[0][0]
         # i=-10
         if i ==11:
-            map_dict["redapple_0"] = {'x': array[0][i],'y': array[1][i]}
+            map_dict["redapple_0"] = {'x': array[0][index],'y': array[1][index]}
         elif i ==12:
-            map_dict["greenapple_0"] = {'x': array[0][i],'y': array[1][i]}
+            map_dict["greenapple_0"] = {'x': array[0][index],'y': array[1][index]}
         elif i ==13:
-            map_dict["orange_0"] = {'x': array[0][i],'y': array[1][i]}
+            map_dict["orange_0"] = {'x': array[0][index],'y': array[1][index]}
         elif i ==14:
-            map_dict["mango_0"] = {'x': array[0][i],'y': array[1][i]}
+            map_dict["mango_0"] = {'x': array[0][index],'y': array[1][index]}
         elif i ==15:
-            map_dict["capsicum_0"] = {'x': array[0][i],'y': array[1][i]}
+            map_dict["capsicum_0"] = {'x': array[0][index],'y': array[1][index]}
         
         
     return map_dict
 
-
-
-
-if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser("Matching the estimated map and the true map")
-    parser.add_argument("groundtruth", type=str, help="The ground truth file name.")
-    parser.add_argument("estimate", type=str, help="The estimate file name.")
-    args = parser.parse_args()
-
-    # obtain file output
-    gt_aruco = parse_groundtruth(args.groundtruth)
-    us_aruco = parse_user_map(args.estimate)
-
-    # append point (0,0) as the start origin point
-    gt_aruco[0]=np.array([[ 0],[0]])
-    us_aruco[0]= np.array([[ 0],[0]])
-
-
+def generate_map(base_file,slam_file):
+    
+    gt_aruco = parse_groundtruth(base_file)
+    us_aruco = parse_user_map(slam_file)
+    
     taglist, us_vec, gt_vec = match_aruco_points(us_aruco, gt_aruco)
     idx = np.argsort(taglist)
     taglist = np.array(taglist)[idx]
     us_vec = us_vec[:,idx]
-    print(us_vec)
     gt_vec = gt_vec[:, idx] 
+
 
     # using one known aruco, and known starting point at (0,0), estimate the transform 
     theta, x = solve_umeyama2d(us_vec, gt_vec)
     us_vec_aligned = apply_transform(theta, x, us_vec)
-
-    # calculate error so far
-    diff = gt_vec - us_vec_aligned
-    rmse = compute_rmse(us_vec, gt_vec)
-    rmse_aligned = compute_rmse(us_vec_aligned, gt_vec)
+    print(f"theta: {theta}")
+    print(f"offset: {x}")
 
     # apply the same transform to estimated for all points position 
     taglist_pred, us_vec_pred = match_aruco_points_slam(us_aruco)
@@ -182,24 +186,26 @@ if __name__ == '__main__':
     # print(us_vec)
     us_vec_aligned_pred = apply_transform(theta, x, us_vec_pred)
 
-    print()
-    print("The following parameters optimally transform the estimated points to the ground truth.")
-    print("Rotation Angle: {}".format(theta))
-    print("Translation Vector: ({}, {})".format(x[0,0], x[1,0]))
+    
+    with open('lab_output/M5_true_map.txt', 'w') as f:
+        json.dump(convertArrayToMap(taglist_pred,us_vec_aligned_pred), f, indent=4)
+
+    with open('lab_output/targets.txt', 'w') as f:
+        json.dump(addFruitToMap(taglist_pred,us_vec_aligned_pred), f, indent=4)
+
+    return taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred
+
+def print_map(taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred):
     
     print()
-    print("Number of found markers: {}".format(len(taglist)))
-    print("RMSE before alignment: {}".format(rmse))
-    print("RMSE after alignment:  {}".format(rmse_aligned))
-    
-    print()
-    print('%s %7s %9s %7s %11s %9s %7s' % ('Marker', 'Real x', 'Pred x', 'Δx', 'Real y', 'Pred y', 'Δy'))
+    print('%s %7s %9s %11s %9s' % ('Marker', 'Real x', 'Pred x', 'Real y', 'Pred y'))
     print('-----------------------------------------------------------------')
     
     # '''
     for i in range(len(taglist)):
-        print('%3d %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f\n' % (taglist[i], gt_vec[0][i], us_vec_aligned[0][i], diff[0][i], gt_vec[1][i], us_vec_aligned[1][i], diff[1][i]))
-    
+        print('%3d %9.2f %9.2f %9.2f %9.2f \n' % (taglist[i], gt_vec[0][i], us_vec_aligned[0][i], gt_vec[1][i], us_vec_aligned[1][i]))
+
+
     ax = plt.gca()
     ax.scatter(gt_vec[0,:], gt_vec[1,:], marker='o', color='C0', s=100)
     ax.scatter(us_vec_aligned_pred[0,:], us_vec_aligned_pred[1,:], marker='x', color='C1', s=100)
@@ -215,10 +221,16 @@ if __name__ == '__main__':
     plt.axis([-1.6,1.6,-1.6,1.6])
     plt.grid()
     plt.show()
-    # '''
-    with open('lab_output/M5_true_map.txt', 'w') as f:
-        json.dump(convertArrayToMap(taglist_pred,us_vec_aligned_pred), f, indent=4)
+    
 
-    with open('lab_output/targets.txt', 'w') as f:
-        json.dump(addFruitToMap(taglist_pred,us_vec_aligned_pred), f, indent=4)
-        
+if __name__ == '__main__':
+    import argparse
+
+
+    parser = argparse.ArgumentParser("Matching the estimated map and the true map")
+    parser.add_argument("groundtruth", type=str, help="The ground truth file name.")
+    parser.add_argument("estimate", type=str, help="The estimate file name.")
+    args = parser.parse_args()
+
+    taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred = generate_map(base_file=args.groundtruth,slam_file=args.estimate)
+    print_map(taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred)

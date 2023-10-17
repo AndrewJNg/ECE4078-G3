@@ -180,7 +180,7 @@ def groundtruth_to_grid(x,y,rows): # Convert ground truth coordinate to grid
 
 def read_groundtruth(grid,rows):
     # READ GROUND TRUTH
-    f = open("M4_true_map.txt", "r")
+    f = open("lab_output\M5_true_map.txt", "r")
     data = json.loads(f.read())
     for i in data:
         [row, col] = groundtruth_to_grid(data[i]['x'], data[i]['y'], rows)

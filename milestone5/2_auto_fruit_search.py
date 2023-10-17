@@ -23,6 +23,7 @@ from slam.robot import Robot
 import slam.aruco_detector as aruco
 import util.DatasetHandler as dh # save/load functions
 import shutil # python package for file operations
+import SLAM_eval
 
 # import utility functions
 sys.path.insert(0, "util")
@@ -513,6 +514,7 @@ def localize(increment_angle = 5): # turn and call get_robot_pose
     return landmark_counter
     
 def getPath(available_waypoints_with_dist):
+    global robot_pose
     temp_paths = [50 for z in range(len(available_waypoints_with_dist))]
     turn_arr = [50 for z in range(len(available_waypoints_with_dist))]
     current_start_pos = [robot_pose[0],robot_pose[1]]
@@ -547,13 +549,15 @@ if __name__ == "__main__":
     ## Robot connection setup
     # arguments for starting command
     parser = argparse.ArgumentParser("Fruit searching")
-    parser.add_argument("--map", type=str, default='M4_true_map.txt')
+    
+    parser.add_argument("--base_map", type=str, default='lab_output/base_map.txt')
+    parser.add_argument("--map", type=str, default='lab_output\M5_true_map.txt')
     parser.add_argument("--ip", metavar='', type=str, default='192.168.137.156')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--yolo", metavar='', type=int, default=0)
     parser.add_argument("--ckpt", metavar='', type=str, default='network/scripts/model/yolov8_model_best.pt')
-
     args, _ = parser.parse_known_args()
+    
 
     # robot startup with given variables
     ppi = Alphabot(args.ip,args.port)
@@ -588,21 +592,6 @@ if __name__ == "__main__":
     yolov = Detector(args.ckpt)
 
 ####################################################
-    ## Set up all EKF using given values in true map
-    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
-    robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
-    aruco_det = aruco.aruco_detector(robot, marker_length = 0.06)
-    ekf = EKF(robot)
-    ppi.set_servo(angleToPulse(0*np.pi/180))
-    
-    search_list = read_search_list()
-    print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
-    # print('Fruit list:\n {}\n'.format(fruits_list))
-    # print('Fruit true pos:\n {}\n'.format(fruits_true_pos))
-    # print('Aruco true pos:\n {}\n'.format(aruco_true_pos))
-    # print('Search list:\n {}\n'.format(search_list))
-
-####################################################
 # Initiate UI
     start = initiate_UI()
     operate = Operate()
@@ -610,14 +599,88 @@ if __name__ == "__main__":
 ####################################################
     global robot_pose
     robot_pose = [0.,0.,0.]
+    
+    robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
+    aruco_det = aruco.aruco_detector(robot, marker_length = 0.06)
+    ekf = EKF(robot)
+    ppi.set_servo(angleToPulse(0*np.pi/180))
+####################################################
+    # Generate Aruco base map
+
+
+
+####################################################
+    ## Set up all EKF using given values in true map
+    # output_path.write_map(ekf)
+    SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
+    
+    
+    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
+    search_list = read_search_list()
+    print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
+    # print('Fruit list:\n {}\n'.format(fruits_list))
+    # print('Fruit true pos:\n {}\n'.format(fruits_true_pos))
+    # print('Aruco true pos:\n {}\n'.format(aruco_true_pos))
+    # print('Search list:\n {}\n'.format(search_list))
+
+    
 ########################################   A* CODE INTEGRATED ##################################################
-    waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
+    # waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
+    # print(waypoints_compiled)
     # Note: waypoints are now in format of [[[pose, dist],[],[],[]], [[],[],[],[]], [[],[],[],[]]] to choose least turns needed to reach waypoint
     
+    # localize(10)
+    
+     #### Start Localizing on Origin ####
+    # robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
     localize(10)
+    # pose_arr = [[-0.8,0], [-1.2,1.2],[1.2,1.2],[1.2,-1.2],[-1.2,-1.2]]
+    pose_arr = [[-0.8,0], [0.8,0]]
+    for pose in pose_arr:
+        
+        robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+        localize(10)
+
+        # Initialize path and start pos
+        current_start_pos = [robot_pose[0],robot_pose[1]]
+        initial_path, turns = pathFind.main(current_start_pos, pose, [])
+        initial_path.pop(0)
+        count = 1
+        while current_start_pos != initial_path[-1]:
+            if count == 1:
+                sub_waypoint = initial_path[0]
+            # Drive to segmented waypoints
+            # operate.draw(canvas)
+            pygame.display.update()
+            print("    ")
+            print("Target: "+str(sub_waypoint))
+            drive_to_point(sub_waypoint)
+            print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
+            
+            landmark_counter = localize(30)
+            if landmark_counter == 0: # If seen markers not more than 2
+                print(f"Seen 0 landmarks during localize ({landmark_counter}). Localize agian")
+                # Turn 180 deg and localize
+                robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+                localize(10)
+            output_path.write_map(ekf)
+            SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
+            # Update path and start pos
+            current_start_pos = sub_waypoint
+            path, turns = pathFind.main(current_start_pos, pose, fruits_true_pos)
+            print(f'Path: {path}')
+            path.pop(0)
+            sub_waypoint = path[0]
+            count += 1
+            
+
     waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
-    for fruit_progress in range(len(fruits_list)):
+        
+    for fruit_progress in range(len(search_list)):
+        
+        # print("1")  
         available_waypoints_with_dist = waypoints_compiled[fruit_progress]
+        # print("2")
 
         # Get initial path
         path, min_turn = getPath(available_waypoints_with_dist)
@@ -627,6 +690,7 @@ if __name__ == "__main__":
         #### Start Localizing on Origin ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
         localize(10)
+        # print("3")
 
         #### Main Algorithm ####
         for i, sub_waypoint in enumerate(path, 3):
@@ -637,12 +701,18 @@ if __name__ == "__main__":
             print("Target: "+str(sub_waypoint))
             drive_to_point(sub_waypoint)
             print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
+            
             landmark_counter = localize(30)
             if landmark_counter == 0: # If seen markers not more than 2
                 print(f"Seen 0 landmarks during localize ({landmark_counter}). Localize agian")
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
                 localize(10)
+
+            output_path.write_map(ekf)
+            SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
+            print("After_slam_coord: ",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
+
 
             ## Update Positions and Target Waypoints##
             # Get updated fruit pos & obstacle pos
