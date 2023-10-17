@@ -416,7 +416,7 @@ def take_and_analyse_picture():
     operate.draw(canvas)
     pygame.display.update()
 
-    return landmarks
+    return landmarks_combined
     # return landmarks, detector_output,aruco_corners
 
 def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
