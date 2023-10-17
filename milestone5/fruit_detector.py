@@ -127,7 +127,11 @@ def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
             corners = (np.array(corners[0], dtype=np.float32),)
             ids = np.array([ids])
             print(f"Fruit id: {ids[0][0]}, with bbox {box_temp}")
-            marker_length = (target_dimensions[int(label)-1][0] + target_dimensions[int(label)-1][1])/2
+
+            marker_height = target_dimensions[int(label)-1][2]
+            aspect_ratio = box_temp[2]/ box_temp[3] # box_wdith / box_height
+            marker_length = aspect_ratio * marker_height
+            # marker_length = (target_dimensions[int(label)-1][0] + target_dimensions[int(label)-1][1])/2
             landmarks, fruit_img, boundingbox = detect_single_fruit_positions(img=img,corners=corners,ids=ids,marker_length = marker_length ,camera_matrix = camera_matrix,distortion_params=dist_coeffs)
             measurements.append(landmarks[0])
         
