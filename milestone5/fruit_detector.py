@@ -57,11 +57,11 @@ def detect_single_fruit_positions(img,corners,ids,marker_length,camera_matrix,di
 
 def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
     target_dimensions = [
-            [0.074, 0.074, 0.087],  # Red Apple
+            [0.074, 0.074, 0.083],  # Red Apple
             [0.081, 0.081, 0.067],  # Green Apple
             [0.075, 0.075, 0.072],  # Orange
             [0.113, 0.067, 0.058],  # Mango
-            [0.073, 0.073, 0.088],  # Capsicum
+            [0.073, 0.067, 0.093],  # Capsicum
         ]
     
     detector_output, network_vis = yolov.detect_single_image(img)
@@ -75,35 +75,46 @@ def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
         corners = []
         ids = []
         label = detector_output[i][0]
-        # print("label")
-        # print(label)
         box_temp = detector_output[i][1]
         
-        box = [box_temp[0]],[box_temp[1]],[box_temp[2]],[box_temp[3]]
-        corners.append([[
-                        [box[0][0]+box[2][0]/2,box[1][0]+box[3][0]/2],
-                        [box[0][0]-box[2][0]/2,box[1][0]+box[3][0]/2],
-                        [box[0][0]-box[2][0]/2,box[1][0]-box[3][0]/2],
-                        [box[0][0]+box[2][0]/2,box[1][0]-box[3][0]/2]
-                        ]])
-        
-        ids.append(int(label)+10)
-        corners = (np.array(corners[0], dtype=np.float32),)
-        ids = np.array([ids])
+        x_center = box_temp[0]
+        y_center = box_temp[1]
+        x_offset = box_temp[2]/2
+        y_offset = box_temp[3]/2        
+
+        height, width, channel = img.shape
+
         # print()
-        print("before")
-        print(corners)
-        print(ids)
-        landmarks, aruco_img, boundingbox = detect_single_fruit_positions(img=img,corners=corners,ids=ids,marker_length = target_dimensions[int(label)-1][0],camera_matrix = camera_matrix,distortion_params=dist_coeffs)
-        measurements.append(landmarks[0])
-        
-        # imgplot = plt.imshow(aruco_img)
-        # plt.show()
-    # print(corners)
+        if(np.floor(x_center-x_offset)<=(0+10) or np.ceil(x_center+x_offset)>=(width-10)):
+            print(f"ignore: {label}, due to hitting the sides")
+            continue
+        elif(np.floor(y_center-y_offset)<=(0+10) or np.ceil(y_center+y_offset)>=(height-10)):
+            print(f"ignore: {label}, due to hitting the ceiling/floor")
+            continue
+        elif (box_temp[2] <=20 or box_temp[3] <=20):
+            print(f"ignore: {label}, due to being too small")
+            continue
+
+        else:
+            # continue with finding the landmark
+            corners.append([[
+                            [x_center+x_offset, y_center+y_offset],
+                            [x_center-x_offset, y_center+y_offset],
+                            [x_center-x_offset, y_center-y_offset],
+                            [x_center+x_offset, y_center-y_offset]
+                            ]])
+            
+            ids.append(int(label)+10)
+            corners = (np.array(corners[0], dtype=np.float32),)
+            ids = np.array([ids])
+            print(f"Fruit id: {ids[0][0]}, with bbox {box_temp}")
+            marker_length = (target_dimensions[int(label)-1][0] + target_dimensions[int(label)-1][1])/2
+            landmarks, fruit_img, boundingbox = detect_single_fruit_positions(img=img,corners=corners,ids=ids,marker_length = marker_length ,camera_matrix = camera_matrix,distortion_params=dist_coeffs)
+            measurements.append(landmarks[0])
         
 
     
-    return measurements
+    return measurements,network_vis 
 
 ## testing file
 if __name__ == "__main__":
@@ -113,6 +124,7 @@ if __name__ == "__main__":
     # img = np.array(Image.open('network/scripts/image_2.jpeg'))
     img = np.array(Image.open('network/scripts/image_3.png'))
     # img = np.array(Image.open('network/scripts/image_4.png'))
+    # img = np.array(Image.open('network/scripts/image_5.png'))
     
     global dist_coeffs
     fileD = "calibration/param/distCoeffs.txt"
@@ -133,19 +145,21 @@ if __name__ == "__main__":
 
     robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
     aruco_det = aruco.aruco_detector(robot, marker_length = 0.06)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     landmarks_aruco, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    print(landmarks_aruco)
+    print(f"aruco_landmarl: {landmarks_aruco}")
     # imgplot = plt.imshow(aruco_img)
     # plt.show()
     # print(detector_output)
 
-
-    landmarks_fruits = detect_fruit_landmark(yolov=detc,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
-    print(landmarks_fruits)
+    landmarks_fruits,network_img = detect_fruit_landmark(yolov=detc,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
+    print(f"fruits_landmarl: {landmarks_fruits}")
+    
     landmarks_combined = []
     landmarks_combined.extend(landmarks_aruco)
     landmarks_combined.extend(landmarks_fruits)
-
-    # landmarks = np.reshape[(landmarks_aruco,landmarks_fruits),-1]
     print(landmarks_combined)
+    
+    imgplot = plt.imshow(network_img)
+    plt.show()
 
