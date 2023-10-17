@@ -513,11 +513,11 @@ def localize(increment_angle = 5): # turn and call get_robot_pose
     # print(f"Landmarks: {landmark_counter}")
     return landmark_counter
     
-def getPath(available_waypoints_with_dist):
-    global robot_pose
+def getMinTurnPath(available_waypoints_with_dist, current_start_pos):
+    # Initializing array for paths and turns for each waypoints
     temp_paths = [50 for z in range(len(available_waypoints_with_dist))]
     turn_arr = [50 for z in range(len(available_waypoints_with_dist))]
-    current_start_pos = [robot_pose[0],robot_pose[1]]
+    # Loop through each waypoints
     for i, (pose, dist) in enumerate(available_waypoints_with_dist):
         temp_paths[i], turns = pathFind.main(current_start_pos, pose, fruits_true_pos)
         turn_arr[i] = turns
@@ -599,7 +599,7 @@ if __name__ == "__main__":
 ####################################################
     global robot_pose
     robot_pose = [0.,0.,0.]
-    
+    current_start_pos = [robot_pose[0],robot_pose[1]]
     robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
     aruco_det = aruco.aruco_detector(robot, marker_length = 0.06)
     ekf = EKF(robot)
@@ -629,107 +629,98 @@ if __name__ == "__main__":
     # print(waypoints_compiled)
     # Note: waypoints are now in format of [[[pose, dist],[],[],[]], [[],[],[],[]], [[],[],[],[]]] to choose least turns needed to reach waypoint
     
-    # localize(10)
     
-     #### Start Localizing on Origin ####
-    # robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+    #### Start Localizing on Origin ####
     localize(10)
+    robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
     # pose_arr = [[-0.8,0], [-1.2,1.2],[1.2,1.2],[1.2,-1.2],[-1.2,-1.2]]
-    pose_arr = [[-0.8,0], [0.8,0]]
-    for pose in pose_arr:
-        
+    waypoint_arr = [[-0.8,0], [0.8,0]]
+    for waypoint in waypoint_arr:
+        #### Localizing After Fruit Visit ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
         localize(10)
 
-        # Initialize path and start pos
-        current_start_pos = [robot_pose[0],robot_pose[1]]
-        initial_path, turns = pathFind.main(current_start_pos, pose, [])
-        initial_path.pop(0)
-        count = 1
-        while current_start_pos != initial_path[-1]:
-            if count == 1:
-                sub_waypoint = initial_path[0]
-            # Drive to segmented waypoints
-            # operate.draw(canvas)
-            pygame.display.update()
-            print("    ")
-            print("Target: "+str(sub_waypoint))
-            drive_to_point(sub_waypoint)
-            print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
-            
-            landmark_counter = localize(30)
-            if landmark_counter == 0: # If seen markers not more than 2
-                print(f"Seen 0 landmarks during localize ({landmark_counter}). Localize agian")
-                # Turn 180 deg and localize
-                robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-                localize(10)
+        while current_start_pos != waypoint:
+            ## Update ##
+            # Update EKF Outputs
             output_path.write_map(ekf)
             SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
-            # Update path and start pos
-            current_start_pos = sub_waypoint
-            path, turns = pathFind.main(current_start_pos, pose, fruits_true_pos)
-            print(f'Path: {path}')
+            # Update path
+            path, turns = pathFind.main(current_start_pos, waypoint, fruits_true_pos)
             path.pop(0)
-            sub_waypoint = path[0]
-            count += 1
-            
+            print(f'Path: {path}')
+            print(f'Turns for path: {turns}')
+            target_pose = path[0]
 
-    waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
-        
-    for fruit_progress in range(len(search_list)):
-        
-        # print("1")  
-        available_waypoints_with_dist = waypoints_compiled[fruit_progress]
-        # print("2")
-
-        # Get initial path
-        path, min_turn = getPath(available_waypoints_with_dist)
-        print(f'Initial Path: {path}')
-        print(f'Turns for path: {min_turn}')
-
-        #### Start Localizing on Origin ####
-        robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-        localize(10)
-        # print("3")
-
-        #### Main Algorithm ####
-        for i, sub_waypoint in enumerate(path, 3):
             # Drive to segmented waypoints
             # operate.draw(canvas)
             pygame.display.update()
             print("    ")
-            print("Target: "+str(sub_waypoint))
-            drive_to_point(sub_waypoint)
+            print("Target: "+str(target_pose))
+            drive_to_point(target_pose)
             print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
+            # Update start pos
+            current_start_pos = target_pose
             
             landmark_counter = localize(30)
             if landmark_counter == 0: # If seen markers not more than 2
-                print(f"Seen 0 landmarks during localize ({landmark_counter}). Localize agian")
+                print("Seen 0 landmarks. Localize agian")
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
                 localize(10)
+            
+    
 
+    #### AUTONOMOUS NAVIGATION ####
+    waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
+    for fruit_progress in range(len(search_list)):
+        #### Localizing After Fruit Visit ####
+        robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+        localize(10)
+        
+        while current_start_pos != waypoint:
+            ## Update ##
+            # Update EKF Outputs
             output_path.write_map(ekf)
             SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
             print("After_slam_coord: ",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
-
-
-            ## Update Positions and Target Waypoints##
             # Get updated fruit pos & obstacle pos
             fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
             # Get updated waypoints
             waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
             available_waypoints_with_dist = waypoints_compiled[fruit_progress]
-            # Get update path
-            path, min_turn = getPath(available_waypoints_with_dist)
-
+            # Get updated path
+            path, min_turn = getMinTurnPath(available_waypoints_with_dist)
+            path.pop(0)
+            target_pose = path[0]
+            # Get updated waypoint
+            waypoint = path[-1]
+            # Print path
             print(f'Path: {path}')
             print(f'Turns left: {min_turn}')
+
+            # Drive to segmented waypoints
+            # operate.draw(canvas)
+            pygame.display.update()
+            print("    ")
+            print("Target: "+str(target_pose))
+            drive_to_point(target_pose)
+            print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
+            # Update start pos
+            current_start_pos = target_pose
+            
+            landmark_counter = localize(30)
+            if landmark_counter == 0: # If seen markers not more than 2
+                print(f"Seen 0 landmarks during localize ({landmark_counter}). Localize agian")
+                # Turn 180 deg and localize
+                robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+                localize(10)
+            
         
         output_path.write_map(ekf)
         
         print(f"######################################################################")
-        print(f"Visited Fruit {fruit_progress+1}")
+        print(f"Visited Fruit {fruit_progress+1}: {search_list[fruit_progress]} at {current_start_pos}")
         print(f"######################################################################")
         ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
 
@@ -762,7 +753,7 @@ if __name__ == "__main__":
         # waypoints.append(available_waypoints_with_dist[index_min_turn][0])
 
         # Get initial path
-        path, min_turn = getPath(available_waypoints_with_dist)
+        path, min_turn = getMinTurnPath(available_waypoints_with_dist)
         print(f'Initial Path: {path}')
         print(f'Turns for path: {min_turn}')
 
@@ -794,7 +785,7 @@ if __name__ == "__main__":
             # Get updated waypoints
             waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
             # Get update path
-            path, min_turn = getPath(available_waypoints_with_dist)
+            path, min_turn = getMinTurnPath(available_waypoints_with_dist)
             # print(f'Path: {path}')
             # print(f'Turns left: {min_turn}')
         
