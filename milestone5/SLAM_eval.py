@@ -3,6 +3,7 @@ import ast
 import numpy as np
 import json
 import matplotlib.pyplot as plt
+import util.DatasetHandler as dh # save/load functions
 
 def parse_groundtruth(fname : str) -> dict:
     with open(fname, 'r') as f:
@@ -44,9 +45,8 @@ def match_aruco_points(aruco0 : dict, aruco1 : dict):
         keys.append(key)
     return keys, np.hstack(points0), np.hstack(points1)
 
-def match_aruco_points_slam(aruco0 : dict, aruco1 : dict):
+def match_aruco_points_slam(aruco0 : dict):
     points0 = []
-    points1 = []
     keys = []
     for key in aruco0:
         
@@ -107,6 +107,38 @@ def compute_rmse(points1, points2):
     return np.sqrt(MSE)
 
 
+def convertArrayToMap(taglist_pred,array):
+    # print(taglist_pred)
+    map_dict = {}
+    for i in taglist_pred:
+        if i >15 or i==0:
+            continue
+        map_dict[f'aruco{i}_0'] = {'x': array[0][i],'y': array[1][i]}
+        
+    return map_dict
+
+
+def addFruitToMap(taglist_pred,array):
+
+    # print(taglist_pred)
+    map_dict = {}
+    for i in taglist_pred:
+        # i=-10
+        if i ==11:
+            map_dict["redapple_0"] = {'x': array[0][i],'y': array[1][i]}
+        elif i ==12:
+            map_dict["greenapple_0"] = {'x': array[0][i],'y': array[1][i]}
+        elif i ==13:
+            map_dict["orange_0"] = {'x': array[0][i],'y': array[1][i]}
+        elif i ==14:
+            map_dict["mango_0"] = {'x': array[0][i],'y': array[1][i]}
+        elif i ==15:
+            map_dict["capsicum_0"] = {'x': array[0][i],'y': array[1][i]}
+        
+        
+    return map_dict
+
+
 
 
 if __name__ == '__main__':
@@ -143,7 +175,11 @@ if __name__ == '__main__':
     rmse_aligned = compute_rmse(us_vec_aligned, gt_vec)
 
     # apply the same transform to estimated for all points position 
-    taglist_pred, us_vec_pred = match_aruco_points_slam(us_aruco, gt_aruco)
+    taglist_pred, us_vec_pred = match_aruco_points_slam(us_aruco)
+    idx = np.argsort(taglist_pred)
+    taglist_pred = np.array(taglist_pred)[idx]
+    us_vec_pred = us_vec_pred[:,idx]
+    # print(us_vec)
     us_vec_aligned_pred = apply_transform(theta, x, us_vec_pred)
 
     print()
@@ -160,6 +196,7 @@ if __name__ == '__main__':
     print('%s %7s %9s %7s %11s %9s %7s' % ('Marker', 'Real x', 'Pred x', 'Δx', 'Real y', 'Pred y', 'Δy'))
     print('-----------------------------------------------------------------')
     
+    # '''
     for i in range(len(taglist)):
         print('%3d %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f\n' % (taglist[i], gt_vec[0][i], us_vec_aligned[0][i], diff[0][i], gt_vec[1][i], us_vec_aligned[1][i], diff[1][i]))
     
@@ -178,4 +215,10 @@ if __name__ == '__main__':
     plt.axis([-1.6,1.6,-1.6,1.6])
     plt.grid()
     plt.show()
+    # '''
+    with open('lab_output/M5_true_map.txt', 'w') as f:
+        json.dump(convertArrayToMap(taglist_pred,us_vec_aligned_pred), f, indent=4)
 
+    with open('lab_output/targets.txt', 'w') as f:
+        json.dump(addFruitToMap(taglist_pred,us_vec_aligned_pred), f, indent=4)
+        

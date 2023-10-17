@@ -406,7 +406,7 @@ def take_and_analyse_picture():
     operate.draw(canvas)
     pygame.display.update()
 
-    landmarks_fruits = fruit_detector.detect_fruit_landmark(yolov=yolov,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
+    landmarks_fruits,fruit_img = fruit_detector.detect_fruit_landmark(yolov=yolov,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
 
     landmarks_combined = []
     landmarks_combined.extend(landmarks_aruco)
