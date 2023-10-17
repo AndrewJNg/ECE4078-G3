@@ -405,7 +405,7 @@ def take_and_analyse_picture():
     operate.draw(canvas)
     pygame.display.update()
 
-    landmarks_fruits = fruit_detector.detect_fruit_landmark(yolov=yolov,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
+    landmarks_fruits,fruit_img = fruit_detector.detect_fruit_landmark(yolov=yolov,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
 
     landmarks_combined = []
     landmarks_combined.extend(landmarks_aruco)
@@ -519,7 +519,7 @@ if __name__ == "__main__":
     # arguments for starting command
     parser = argparse.ArgumentParser("Fruit searching")
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
-    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.47')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.156')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     args, _ = parser.parse_known_args()
 
@@ -590,17 +590,28 @@ if __name__ == "__main__":
     robot_pose = [0.,0.,0.]
     # pygame.display.update()
     # robot_turn(turn_angle=90*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+    # scale  = 1.3667e-02
     # robot_straight(0.8)
+    # while True:
+    #     try:
+    #         print()
+    #         print(f"current: {scale }")
+
+    #         scale  = float(input("input, scale: "))
+    #         robot_straight(0.8)
+    #         # ppi.set_servo(int(x))
+
+    #     except:
+    #         if(str(scale)=='z'):
+    #             break
+    #         print("enter again")
 ########################################   A* CODE INTEGRATED ##################################################
-    # localize([0.,0.])
-    # localize([0.,0.])
-    # localize([0.,0.])
+
     # '''
-    
     print(aruco_true_pos)
     waypoints = wp.generateWaypoints(search_list, fruits_list, fruits_true_pos, aruco_true_pos, log = 1)
     localize(10)
-    for waypoint_progress in range(3):
+    for waypoint_progress in range(len(fruits_list)):
         current_waypoint = waypoints[waypoint_progress]
         if waypoint_progress == 0:
             current_start_pos = [0,0]
@@ -638,25 +649,7 @@ if __name__ == "__main__":
         print(f"Visited Fruit {waypoint_progress+1}")
         print(f"######################################################################")
         ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
-
+    # '''
 
         
     
-    # if command['output']:
-        # self.notification = 'Map is saved'
-        # self.command['output'] = False
-    # save inference with the matching robot pose and detector labels
-    # if self.command['save_inference']:
-    #     if self.file_output is not None:
-    #         #image = cv2.cvtColor(self.file_output[0], cv2.COLOR_RGB2BGR)
-    #         self.pred_fname = self.output.write_image(self.file_output[0],
-    #                                                 self.file_output[1])
-    #         self.notification = f'Prediction is saved to {operate.pred_fname}'
-    #     else:
-    #         self.notification = f'No prediction in buffer, save ignored'
-    #     self.command['save_inference'] = False
-
-    # '''
-
-
-
