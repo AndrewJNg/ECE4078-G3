@@ -393,20 +393,23 @@ def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang
     get_robot_pose(drive_meas)
 
 ################################################################### Pictures and model ###################################################################
-def take_and_analyse_picture():
+def take_and_analyse_picture(initial_survey = 0):
     global aruco_img
-    
+
     global camera_matrix
     global dist_coeffs
+    marker_pose = None
 
     img = ppi.get_image()
     landmarks_aruco, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
-    
+    if initial_survey and boundingbox:
+        marker_pose = take_marker_pose(boundingbox)
+
     # visualise
     operate.draw(canvas)
     pygame.display.update()
 
-    landmarks_fruits,fruit_img = fruit_detector.detect_fruit_landmark(yolov=yolov,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
+    landmarks_fruits, fruit_img = fruit_detector.detect_fruit_landmark(yolov=yolov,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
 
     landmarks_combined = []
     landmarks_combined.extend(landmarks_aruco)
@@ -416,7 +419,7 @@ def take_and_analyse_picture():
     operate.draw(canvas)
     pygame.display.update()
 
-    return landmarks_combined
+    return landmarks_combined, marker_pose
     # return landmarks, detector_output,aruco_corners
 
 def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
@@ -511,7 +514,52 @@ def localize(increment_angle = 5): # turn and call get_robot_pose
     time.sleep(0.5)
     # print(f"Landmarks: {landmark_counter}")
     return landmark_counter
+
+def generateBaseMap(fname):
+    # look right first
+    ppi.set_servo(angleToPulse(-90*np.pi/180))
+    time.sleep(0.3)
+    # Get picture and estimate marker position
+    time.sleep(0.2)
+
+    increment_angle = 90
+    current_angle = -90
+    markers_pose = []
+    for i in range(int(180/increment_angle)):
+        current_angle+=increment_angle
+        ppi.set_servo(angleToPulse(current_angle*np.pi/180))
+        time.sleep(0.4)
+        # Get picture and estimate marker position
+        landmarks_combined, current_marker_pose = take_and_analyse_picture(1)
+        if current_marker_pose:
+            # Append to array
+            markers_pose.append(current_marker_pose)
+        time.sleep(0.2)
+
+    # TODO Write to base map file
+
+    # look back at center
+    ppi.set_servo(angleToPulse(0*np.pi/180))
+    time.sleep(0.5)
+
+
+    return None
+
+def take_marker_pose(box):
+    global camera_matrix
+    true_height = 0.06
+    focal_length = camera_matrix[0][0]
+    camera_offset = 0.035 #3.5cm
     
+    ## ASSUMING ONLY 1 BOX
+    distance = focal_length * true_height/box[3][0]
+    x = robot_pose[0][0] + np.cos(robot_pose[2][0]) * (distance + camera_offset)
+    y = robot_pose[1][0] + np.sin(robot_pose[2][0]) * (distance + camera_offset) 
+    world_frame_pos = [x,y]
+
+    return world_frame_pos, id
+
+
 def getPath(available_waypoints_with_dist):
     temp_paths = [50 for z in range(len(available_waypoints_with_dist))]
     turn_arr = [50 for z in range(len(available_waypoints_with_dist))]
@@ -589,14 +637,14 @@ if __name__ == "__main__":
 
 ####################################################
     ## Set up all EKF using given values in true map
-    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
+    # fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map) # REMOVE
     robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
     aruco_det = aruco.aruco_detector(robot, marker_length = 0.06)
     ekf = EKF(robot)
     ppi.set_servo(angleToPulse(0*np.pi/180))
     
     search_list = read_search_list()
-    print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
+    # print_target_fruits_pos(search_list, fruits_list, fruits_true_pos) # REMOVE
     # print('Fruit list:\n {}\n'.format(fruits_list))
     # print('Fruit true pos:\n {}\n'.format(fruits_true_pos))
     # print('Aruco true pos:\n {}\n'.format(aruco_true_pos))
@@ -611,12 +659,17 @@ if __name__ == "__main__":
     global robot_pose
     robot_pose = [0.,0.,0.]
 ########################################   A* CODE INTEGRATED ##################################################
-    waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
     # Note: waypoints are now in format of [[[pose, dist],[],[],[]], [[],[],[],[]], [[],[],[],[]]] to choose least turns needed to reach waypoint
     
+
+    generateBaseMap("lab_output/base_map.txt")
     localize(10)
+    # Placeholder on search fruits' positon
+    fruits_list, fruits_true_pos, _ = read_true_map(args.map) # TODO Replace by autonomous map survey 
+    
+    # Generate initial waypoints
     waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
-    for fruit_progress in range(len(fruits_list)):
+    for fruit_progress in range(len(search_list)):
         available_waypoints_with_dist = waypoints_compiled[fruit_progress]
 
         # Get initial path
@@ -624,7 +677,7 @@ if __name__ == "__main__":
         print(f'Initial Path: {path}')
         print(f'Turns for path: {min_turn}')
 
-        #### Start Localizing on Origin ####
+        # Start Localizing on Origin
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
         localize(10)
 
@@ -645,6 +698,8 @@ if __name__ == "__main__":
                 localize(10)
 
             ## Update Positions and Target Waypoints##
+            # Update true map
+
             # Get updated fruit pos & obstacle pos
             fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
             # Get updated waypoints
