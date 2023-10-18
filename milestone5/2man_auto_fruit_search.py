@@ -58,17 +58,21 @@ class Operate:
         self.control_clock = time.time()
         # initialise images
         self.img = np.zeros([240,320,3], dtype=np.uint8)
+        self.aruco_img = np.zeros([240,320,3], dtype=np.uint8)
         self.bg = pygame.image.load('pics/gui_mask.jpg')
         self.clock = pygame.time.Clock()
         self.clock.tick(30)
 
+        self.folder = "lab_output/save_images"
+
+        global ppi
+        self.pibot = ppi
+        self.fruit_img = np.zeros([240,320,3], dtype=np.uint8)
+
     # wheel control
-    def control(self):       
-        if args.play_data:
-            lv, rv = self.pibot.set_velocity()            
-        else:
-            lv, rv = self.pibot.set_velocity(
-                self.command['motion'])
+    def control(self):
+        lv, rv = self.pibot.set_velocity(
+            self.command['motion'])
         if not self.data is None:
             self.data.write_keyboard(lv, rv)
         dt = time.time() - self.control_clock
@@ -85,10 +89,10 @@ class Operate:
     def update_slam(self, drive_meas):
         global aruco_det
         global ekf
-        landmarks_aruco, aruco_img, boundingbox = aruco_det.detect_marker_positions(self.img)
+        landmarks_aruco, self.aruco_img, boundingbox = aruco_det.detect_marker_positions(self.img)
         landmarks_fruits = []
         if (self.command['inference']):
-            landmarks_fruits,fruit_img = fruit_detector.detect_fruit_landmark(yolov=yolov,img=self.img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
+            landmarks_fruits, self.fruit_img = fruit_detector.detect_fruit_landmark(yolov=yolov,img=self.img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
             self.command['inference'] = False
 
         landmarks_combined = []
@@ -96,8 +100,8 @@ class Operate:
         landmarks_combined.extend(landmarks_fruits)
         
         ekf.predict(drive_meas,servo_theta=0)
-        ekf.add_landmarks(landmarks)
-        ekf.update(landmarks)
+        ekf.add_landmarks(landmarks_combined)
+        ekf.update(landmarks_combined)
 
     # save images taken by the camera
     def save_image(self):
@@ -143,9 +147,15 @@ class Operate:
         ekf_view = ekf.draw_slam_state(res=(320, 480+v_pad),
             not_pause = self.ekf_on)
         canvas.blit(ekf_view, (2*h_pad+320, v_pad))
-        robot_view = cv2.resize(aruco_img, (320, 240))
+        robot_view = cv2.resize(self.aruco_img, (320, 240))
         self.draw_pygame_window(canvas, robot_view, 
                                 position=(h_pad, v_pad)
+                                )
+        # for target detector (M3)
+        detector_view = cv2.resize(self.fruit_img,
+                                (320, 240), cv2.INTER_NEAREST)
+        self.draw_pygame_window(canvas, detector_view, 
+                                position=(h_pad, 240+2*v_pad)
                                 )
 
         # canvas.blit(self.gui_mask, (0, 0))
@@ -198,6 +208,9 @@ class Operate:
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
                 self.command['motion'] = [0, -3]
+            # turn 180 degrees
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_z:
+                robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
             ####################################################
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
@@ -207,7 +220,7 @@ class Operate:
                 self.command['save_image'] = True
                 
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_w:
-                self.localize(increment_angle = 15)
+                localize(increment_angle = 15)
             # save SLAM map
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                 self.command['output'] = True
@@ -472,12 +485,15 @@ def take_and_analyse_picture():
 
     img = ppi.get_image()
     landmarks_aruco, aruco_img, boundingbox = aruco_det.detect_marker_positions(img)
+    operate.img = img
+    operate.aruco_img = aruco_img
     
     # visualise
     operate.draw(canvas)
     pygame.display.update()
-
+    landmarks_fruits = []
     landmarks_fruits,fruit_img = fruit_detector.detect_fruit_landmark(yolov=yolov,img=img,camera_matrix=camera_matrix,dist_coeffs=dist_coeffs)
+    operate.fruit_img = fruit_img
 
     landmarks_combined = []
     landmarks_combined.extend(landmarks_aruco)
@@ -629,7 +645,7 @@ if __name__ == "__main__":
     parser.add_argument("--ckpt", metavar='', type=str, default='network/scripts/model/yolov8_model_best.pt')
     args, _ = parser.parse_known_args()
     
-
+    global ppi
     # robot startup with given variables
     ppi = Alphabot(args.ip,args.port)
     
@@ -681,6 +697,24 @@ if __name__ == "__main__":
 
 
 ####################################################
+    #### Start Localizing on Origin ####
+    # localize(10)
+    # robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+    # pose_arr = [[-0.8,0], [-1.2,1.2],[1.2,1.2],[1.2,-1.2],[-1.2,-1.2]]
+    # localize(10)
+    while not operate.quit:
+        operate.update_keyboard()
+        operate.take_pic()
+        drive_meas = operate.control()
+        operate.update_slam(drive_meas)
+        operate.record_data()
+        operate.save_image()
+        # operate.detect_target()
+        # visualise
+        operate.draw(canvas)
+        pygame.display.update()
+    print("Exited manual teleoperation")
+
     ## Set up all EKF using given values in true map
     # output_path.write_map(ekf)
     SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
@@ -699,25 +733,6 @@ if __name__ == "__main__":
     # waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
     # print(waypoints_compiled)
     # Note: waypoints are now in format of [[[pose, dist],[],[],[]], [[],[],[],[]], [[],[],[],[]]] to choose least turns needed to reach waypoint
-    
-    
-    #### Start Localizing on Origin ####
-    localize(10)
-    robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-    # pose_arr = [[-0.8,0], [-1.2,1.2],[1.2,1.2],[1.2,-1.2],[-1.2,-1.2]]
-    localize(10)
-    while not operate.quit:
-        operate.update_keyboard()
-        operate.take_pic()
-        drive_meas = operate.control()
-        operate.update_slam(drive_meas)
-        operate.record_data()
-        operate.save_image()
-        # operate.detect_target()
-        # visualise
-        operate.draw(canvas)
-        pygame.display.update()
-    print("Exited manual teleoperation")
 
     #### AUTONOMOUS NAVIGATION ####
     waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
