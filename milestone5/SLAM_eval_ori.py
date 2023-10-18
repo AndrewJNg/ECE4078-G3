@@ -96,17 +96,10 @@ def compute_rmse(points1, points2):
 
     return np.sqrt(MSE)
 
-
-if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser("Matching the estimated map and the true map")
-    parser.add_argument("groundtruth", type=str, help="The ground truth file name.")
-    parser.add_argument("estimate", type=str, help="The estimate file name.")
-    args = parser.parse_args()
-
-    gt_aruco = parse_groundtruth(args.groundtruth)
-    us_aruco = parse_user_map(args.estimate)
+def slam_marking(ground_truth,estimation):
+    
+    gt_aruco = parse_groundtruth(ground_truth)
+    us_aruco = parse_user_map(estimation)
 
     taglist, us_vec, gt_vec = match_aruco_points(us_aruco, gt_aruco)
     idx = np.argsort(taglist)
@@ -121,21 +114,26 @@ if __name__ == '__main__':
     rmse = compute_rmse(us_vec, gt_vec)
     rmse_aligned = compute_rmse(us_vec_aligned, gt_vec)
     
-    print()
-    print("The following parameters optimally transform the estimated points to the ground truth.")
-    print("Rotation Angle: {}".format(theta))
-    print("Translation Vector: ({}, {})".format(x[0,0], x[1,0]))
+
+    return rmse_aligned, taglist, gt_vec, us_vec_aligned,theta,x,rmse,diff
+ 
+def print_map(rmse_aligned, taglist, gt_vec, us_vec_aligned,theta,x,rmse,diff):
     
-    print()
-    print("Number of found markers: {}".format(len(taglist)))
-    print("RMSE before alignment: {}".format(rmse))
-    print("RMSE after alignment:  {}".format(rmse_aligned))
+    # print()
+    # print("The following parameters optimally transform the estimated points to the ground truth.")
+    # print("Rotation Angle: {}".format(theta))
+    # print("Translation Vector: ({}, {})".format(x[0,0], x[1,0]))
     
-    print()
-    print('%s %7s %9s %7s %11s %9s %7s' % ('Marker', 'Real x', 'Pred x', 'Δx', 'Real y', 'Pred y', 'Δy'))
-    print('-----------------------------------------------------------------')
-    for i in range(len(taglist)):
-        print('%3d %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f\n' % (taglist[i], gt_vec[0][i], us_vec_aligned[0][i], diff[0][i], gt_vec[1][i], us_vec_aligned[1][i], diff[1][i]))
+    # print()
+    # print("Number of found markers: {}".format(len(taglist)))
+    # print("RMSE before alignment: {}".format(rmse))
+    # print("RMSE after alignment:  {}".format(rmse_aligned))
+    
+    # print()
+    # print('%s %7s %9s %7s %11s %9s %7s' % ('Marker', 'Real x', 'Pred x', 'Δx', 'Real y', 'Pred y', 'Δy'))
+    # print('-----------------------------------------------------------------')
+    # for i in range(len(taglist)):
+    #     print('%3d %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f\n' % (taglist[i], gt_vec[0][i], us_vec_aligned[0][i], diff[0][i], gt_vec[1][i], us_vec_aligned[1][i], diff[1][i]))
     
     ax = plt.gca()
     ax.scatter(gt_vec[0,:], gt_vec[1,:], marker='o', color='C0', s=100)
@@ -151,3 +149,13 @@ if __name__ == '__main__':
     plt.legend(['Real','Pred'])
     plt.grid()
     plt.show()
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser("Matching the estimated map and the true map")
+    parser.add_argument("groundtruth", type=str, help="The ground truth file name.")
+    parser.add_argument("estimate", type=str, help="The estimate file name.")
+    args = parser.parse_args()
+
+    slam_marking(ground_truth=args.groundtruth,estimation=args.estimate)

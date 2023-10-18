@@ -61,6 +61,7 @@ class Operate:
         self.bg = pygame.image.load('pics/gui_mask.jpg')
         self.clock = pygame.time.Clock()
         self.clock.tick(30)
+        self.last_time=0
 
     # wheel control
     """def control(self):       
@@ -157,11 +158,15 @@ class Operate:
                                           False, text_colour)
         canvas.blit(notifiation, (h_pad+10, 596))
 
-        time_remain = self.count_down - time.time() + self.start_time
+        time_remain = time.time() - self.start_time
+        if (time.time()-self.last_time)>10:
+            self.last_time= time.time()
+            print(f"Current time: {round(time_remain,2)}")
+        # time_remain = self.count_down - time.time() + self.start_time
         if time_remain > 0:
-            time_remain = f'Count Down: {time_remain:03.0f}s'
-        elif int(time_remain)%2 == 0:
-            time_remain = "Time Is Up !!!"
+            time_remain = f'Count Up: {time_remain:03.0f}s'
+        # elif int(time_remain)%2 == 0:
+        #     time_remain = "Time Is Up !!!"
         else:
             time_remain = ""
         count_down_surface = TEXT_FONT.render(time_remain, False, (50, 50, 50))
@@ -377,7 +382,7 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     if abs(turn_angle) <=0.8: # <45deg
         baseline = 14.5e-2
     elif abs(turn_angle) <=1.6: # ~90deg
-        baseline = 10.2e-2
+        baseline = 12.2e-2
     elif abs(turn_angle) <=3.2: # ~180deg
         baseline = 9.0e-2
 
@@ -538,9 +543,10 @@ def generateBaseMap(fname):
     get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
     landmarks_combined, current_marker_pose, boundingbox, aruco_id = take_and_analyse_picture()
     if len(aruco_id) ==1:
-        print(boundingbox)
-        x,y= take_marker_pose(boundingbox,robot_pose)
-        aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
+        print(boundingbox[0][0]-320)
+        if(abs(boundingbox[0][0]-320)<160):
+            x,y= take_marker_pose(boundingbox,robot_pose)
+            aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
     elif len(aruco_id) >=2:
         print(boundingbox)
         
@@ -553,8 +559,9 @@ def generateBaseMap(fname):
         id = aruco_id[index]
         print(f"id: {id}")
         
-        x,y= take_marker_pose([boundingbox[index]],robot_pose)
-        aruco_target_pose[f'aruco{int(id[0])}_0'] ={'x': x,'y': y}
+        if(abs(boundingbox[index][0]-320)<160):
+            x,y= take_marker_pose(boundingbox,robot_pose)
+            aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
     time.sleep(0.2)
 
     increment_angle = 45
@@ -569,9 +576,10 @@ def generateBaseMap(fname):
         landmarks_combined, current_marker_pose, boundingbox, aruco_id = take_and_analyse_picture()
         
         if len(aruco_id) ==1:
-            print(boundingbox)
-            x,y= take_marker_pose(boundingbox,robot_pose)
-            aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
+            print(boundingbox[0][0]-320)
+            if(abs(boundingbox[0][0]-320)<160):
+                x,y= take_marker_pose(boundingbox,robot_pose)
+                aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
         elif len(aruco_id) >=2:
             print(boundingbox)
             
@@ -584,8 +592,12 @@ def generateBaseMap(fname):
             id = aruco_id[index]
             print(f"id: {id}")
             
-            x,y= take_marker_pose([boundingbox[index]],robot_pose)
-            aruco_target_pose[f'aruco{int(id[0])}_0'] ={'x': x,'y': y}
+            if(abs(boundingbox[index][0]-320)<160):
+                x,y= take_marker_pose(boundingbox,robot_pose)
+                aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
+            
+            # x,y= take_marker_pose([boundingbox[index]],robot_pose)
+            # aruco_target_pose[f'aruco{int(id[0])}_0'] ={'x': x,'y': y}
 
         time.sleep(0.2)
 
@@ -730,7 +742,7 @@ if __name__ == "__main__":
     
 
     #### Start Localizing on Origin ####
-    localize(10)
+    localize(20)
     # '''    
     # pose_arr = [[-0.8,0], [-1.2,1.2],[1.2,1.2],[1.2,-1.2],[-1.2,-1.2]]
     # waypoint_arr = [[-0.8,0]]
@@ -738,7 +750,7 @@ if __name__ == "__main__":
     for waypoint in waypoint_arr:
         #### Localizing After Fruit Visit ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-        localize(10)
+        localize(20)
         
 
         while current_start_pos != waypoint:
@@ -755,10 +767,15 @@ if __name__ == "__main__":
             if current_start_pos == waypoint:
                 print(f"Error: current pos = waypoint {current_start_pos}")
             path, turns = pathFind.main(current_start_pos, waypoint, fruits_true_pos)
+            if not path:
+                print("Path empty. Feeding with nearer positions")
+                dist = 0.2
+                available_waypoints_with_dist = [[waypoint[0]+dist, waypoint[1]], [waypoint[0]-dist, waypoint[1]], [waypoint[0], waypoint[1]+dist], [waypoint[0], waypoint[1]-dist]] 
+                path, _ = getMinTurnPath(available_waypoints_with_dist, current_start_pos)
             if current_start_pos == path[0]:
                 path.pop(0)
             target_pose = path[0]
-            print(f'Current pose: {current_start_pos}')
+            print(f'Last pose: {current_start_pos}')
             print("Target: "+str(target_pose))
             print(f'Path: {path}')
             print(f'Turns for path: {turns}')
@@ -767,6 +784,7 @@ if __name__ == "__main__":
             # operate.draw(canvas)
             pygame.display.update() 
             drive_to_point(target_pose)
+            print(f'Current pose: {current_start_pos}')
             print("Slam Pose: ", round(robot_pose[0],2), round(robot_pose[1],2), round(robot_pose[2]*180/np.pi,2))
             print("    ")
             # Update start pos
@@ -777,7 +795,8 @@ if __name__ == "__main__":
                 print("Seen 0 landmarks. Localize agian")
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-                localize(10)
+                localize(20)
+        print(f"\n### Reached {waypoint} ###\n")
             
     
     output_path.write_map(ekf)
@@ -868,7 +887,7 @@ if __name__ == "__main__":
 
         #### Start Localizing on Origin ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-        localize(10)
+        localize(20)
 
 
         #### Main Algorithm ####
@@ -888,7 +907,7 @@ if __name__ == "__main__":
                 print(f"Seen 0 landmarks during localize ({landmark_counter}). Localize agian")
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-                localize(10)
+                localize(20)
             print("Pose after localizing",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
 
             ## Update Positions and Target Waypoints##

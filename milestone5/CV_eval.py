@@ -59,18 +59,11 @@ def compute_dist(gt_list, est_list):
     dist_av = sum(dist_list)/len(dist_list) # average distance
     return dist_av
 
-# main program
-if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser("Matching the estimated map and the true map")
-    parser.add_argument("truth", type=str, help="The ground truth file name.")
-    parser.add_argument("est", type=str, help="The estimate file name.")
-    args, _ = parser.parse_known_args()
-
+def marking(ground_truth,estimation):
+    
     # read in ground truth and estimations
-    redapple_gt, greenapple_gt, orange_gt, mango_gt, capsicum_gt = parse_map(args.truth)
-    redapple_est, greenapple_est, orange_est, mango_est, capsicum_est = parse_map(args.est)
+    redapple_gt, greenapple_gt, orange_gt, mango_gt, capsicum_gt = parse_map(ground_truth)
+    redapple_est, greenapple_est, orange_est, mango_est, capsicum_est = parse_map(estimation)
     
     # compute average distance between a target and its closest estimation
     redapple_dist = compute_dist(redapple_gt,redapple_est)
@@ -84,4 +77,17 @@ if __name__ == '__main__':
     print("Average distances between the targets and the closest estimations:")
     print("redapple = {}, greenapple = {}, orange = {}, mango = {}, capsicum = {}".format(redapple_dist,greenapple_dist,orange_dist,mango_dist,capsicum_dist))
     print("estimation error: ", av_dist)
+
+    return av_dist
+# main program
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser("Matching the estimated map and the true map")
+    parser.add_argument("truth", type=str, help="The ground truth file name.")
+    parser.add_argument("est", type=str, help="The estimate file name.")
+    args, _ = parser.parse_known_args()
+    marking(ground_truth = args.truth, estimation = args.est)
+
+    
 
