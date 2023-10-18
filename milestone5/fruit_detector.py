@@ -114,13 +114,13 @@ def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
         min_fruit_bbox = 20
         # print()
         if(np.floor(x_center-x_offset)<=(0+wall_tolerance) or np.ceil(x_center+x_offset)>=(width-wall_tolerance)):
-            print(f"ignore: {label}, due to hitting the sides")
+            # print(f"ignore: {label}, due to hitting the sides")
             continue
         elif(np.floor(y_center-y_offset)<=(0+wall_tolerance) or np.ceil(y_center+y_offset)>=(height-wall_tolerance)):
-            print(f"ignore: {label}, due to hitting the ceiling/floor")
+            # print(f"ignore: {label}, due to hitting the ceiling/floor")
             continue
         elif (box_temp[2] <=min_fruit_bbox or box_temp[3] <=min_fruit_bbox):
-            print(f"ignore: {label}, due to being too small")
+            # print(f"ignore: {label}, due to being too small")
             continue
 
         else:
@@ -135,7 +135,7 @@ def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
             ids.append(int(label)+10)
             corners = (np.array(corners[0], dtype=np.float32),)
             ids = np.array([ids])
-            print(f"Fruit id: {ids[0][0]}, with bbox {box_temp}")
+            # print(f"Fruit id: {ids[0][0]}, with bbox {box_temp}")
 
             marker_height = target_dimensions[int(label)-1][2]
             aspect_ratio = box_temp[2]/ box_temp[3] # box_wdith / box_height

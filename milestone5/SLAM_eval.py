@@ -175,8 +175,8 @@ def generate_map(base_file,slam_file):
     # using one known aruco, and known starting point at (0,0), estimate the transform 
     theta, x = solve_umeyama2d(us_vec, gt_vec)
     us_vec_aligned = apply_transform(theta, x, us_vec)
-    print(f"theta: {theta}")
-    print(f"offset: {x}")
+    # print(f"theta: {theta}")
+    # print(f"offset: {x}")
 
     # apply the same transform to estimated for all points position 
     taglist_pred, us_vec_pred = match_aruco_points_slam(us_aruco)
