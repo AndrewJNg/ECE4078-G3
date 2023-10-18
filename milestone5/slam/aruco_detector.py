@@ -31,7 +31,7 @@ class aruco_detector:
         # print(self.marker_length)
         # print()
         if ids is None:
-            return [], img, []
+            return [], img, [],[]
 
         # Compute the marker positions
         measurements = []

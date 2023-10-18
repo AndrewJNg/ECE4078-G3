@@ -76,11 +76,18 @@ def take_marker_pose(box,robot_pose):
 
 def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
     target_dimensions = [
-            [0.074, 0.074, 0.083],  # Red Apple
-            [0.081, 0.081, 0.067],  # Green Apple
-            [0.075, 0.075, 0.072],  # Orange
-            [0.113, 0.067, 0.058],  # Mango
-            [0.073, 0.067, 0.093],  # Capsicum
+            [0.074, 0.074, 0.135],  # Red Apple X
+            [0.081, 0.081, 0.097],  # Green Apple X
+            [0.075, 0.075, 0.082],  # Orange 
+            [0.113, 0.067, 0.062],  # Mango 
+            [0.073, 0.067, 0.120],  # Capsicum X
+            '''
+            [0.074, 0.074, 0.083],  # Red Apple X
+            [0.081, 0.081, 0.067],  # Green Apple X
+            [0.075, 0.075, 0.072],  # Orange 
+            [0.113, 0.067, 0.058],  # Mango 
+            [0.073, 0.067, 0.093],  # Capsicum X            
+            '''
         ]
     
     detector_output, network_vis = yolov.detect_single_image(img)
@@ -103,14 +110,16 @@ def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
 
         height, width, channel = img.shape
 
+        wall_tolerance = 30
+        min_fruit_bbox = 20
         # print()
-        if(np.floor(x_center-x_offset)<=(0+10) or np.ceil(x_center+x_offset)>=(width-10)):
+        if(np.floor(x_center-x_offset)<=(0+wall_tolerance) or np.ceil(x_center+x_offset)>=(width-wall_tolerance)):
             print(f"ignore: {label}, due to hitting the sides")
             continue
-        elif(np.floor(y_center-y_offset)<=(0+10) or np.ceil(y_center+y_offset)>=(height-10)):
+        elif(np.floor(y_center-y_offset)<=(0+wall_tolerance) or np.ceil(y_center+y_offset)>=(height-wall_tolerance)):
             print(f"ignore: {label}, due to hitting the ceiling/floor")
             continue
-        elif (box_temp[2] <=50 or box_temp[3] <=50):
+        elif (box_temp[2] <=min_fruit_bbox or box_temp[3] <=min_fruit_bbox):
             print(f"ignore: {label}, due to being too small")
             continue
 
@@ -145,10 +154,10 @@ if __name__ == "__main__":
     detc = Detector("network/scripts/model/yolov8_model_best.pt")
     # img = np.array(Image.open('network/scripts/image_0.png'))
     # img = np.array(Image.open('network/scripts/image_2.jpeg'))
-    # img = np.array(Image.open('network/scripts/image_3.png'))
+    img = np.array(Image.open('network/scripts/image_3.png'))
     # img = np.array(Image.open('network/scripts/image_4.png'))
     # img = np.array(Image.open('network/scripts/image_5.png'))
-    img = np.array(Image.open('network/scripts/image_6.png'))
+    # img = np.array(Image.open('network/scripts/image_6.png'))
     
     global dist_coeffs
     fileD = "calibration/param/distCoeffs.txt"
@@ -173,19 +182,37 @@ if __name__ == "__main__":
 
     landmarks_aruco, aruco_img, boundingbox, aruco_id = aruco_det.detect_marker_positions(img)
 
-    imgplot = plt.imshow(aruco_img)
-    plt.show()
     
     aruco_base_dict = {}
     marker_pose = None
     robot_pose = [0,0,90*np.pi/180]
-    if aruco_id:
+    boundingbox = np.array(boundingbox)
+
+    if len(aruco_id) ==1:
+        print(boundingbox)
         x,y= take_marker_pose(boundingbox,robot_pose)
         aruco_base_dict[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
+    elif len(aruco_id) >=2:
+        print(boundingbox)
+        
+        x_values = np.array([item[0] for item in boundingbox])
+        print(f"aruco_id: {aruco_id} bbox: {boundingbox}, x: {x_values}")
+        offset = abs(320*np.ones_like(x_values) - x_values)
+        print(f"offset: {offset}")
+        index = np.argmin(offset)
+        print(f"min: {index}")
+        id = aruco_id[index]
+        print(f"id: {id}")
+        
+        x,y= take_marker_pose([boundingbox[index]],robot_pose)
+        aruco_base_dict[f'aruco{int(id[0])}_0'] ={'x': x,'y': y}
+        
         
     with open('lab_output/base_map.txt', 'w') as f:
         json.dump(aruco_base_dict, f, indent=4)
 
+    imgplot = plt.imshow(aruco_img)
+    plt.show()
     # print(aruco_base_dict)
 
     print(f"aruco_landmarl: {landmarks_aruco}")
@@ -201,6 +228,6 @@ if __name__ == "__main__":
     landmarks_combined.extend(landmarks_fruits)
     print(landmarks_combined)
     
-    imgplot = plt.imshow(network_img)
-    plt.show()
+    # imgplot = plt.imshow(network_img)
+    # plt.show()
 

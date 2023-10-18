@@ -10,7 +10,7 @@ import torch
 # Using detector class to match previous resnet version
 class Detector:
     def __init__(self, model_path):
-        # torch.cuda.set_device(0)  # set to use gpu 
+        torch.cuda.set_device(0)  # set to use gpu 
         self.model = YOLO(model_path)
 
         self.class_colour = {
