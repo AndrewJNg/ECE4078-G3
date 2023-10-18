@@ -208,6 +208,12 @@ class Operate:
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
                 self.command['motion'] = [0, -3]
+            # turn left 90 degrees
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_a:
+                robot_turn(turn_angle=-90*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
+            # turn right 90 degrees
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_d:
+                robot_turn(turn_angle=90*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
             # turn 180 degrees
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_z:
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
