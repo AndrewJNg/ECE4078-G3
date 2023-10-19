@@ -77,9 +77,9 @@ def take_marker_pose(box,robot_pose):
 def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
     target_dimensions = [
             [0.074, 0.074, 0.135],  # Red Apple X
-            [0.081, 0.081, 0.102],  # Green Apple X
-            [0.075, 0.075, 0.082],  # Orange 
-            [0.113, 0.067, 0.058],  # Mango 
+            [0.081, 0.081, 0.097],  # Green Apple X
+            [0.075, 0.075, 0.072],  # Orange 
+            [0.113, 0.067, 0.065],  # Mango 
             [0.073, 0.067, 0.13],  # Capsicum X
             '''
             [0.074, 0.074, 0.135],  # Red Apple X

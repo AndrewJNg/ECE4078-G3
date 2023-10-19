@@ -1,5 +1,6 @@
 import CV_eval
 import SLAM_eval_ori
+import SLAM_eval
 
 import ast
 import numpy as np
@@ -15,6 +16,7 @@ parser = argparse.ArgumentParser("Final scoring")
 parser.add_argument("--true_map", type=str, default='true_map.txt')
 parser.add_argument("--map", type=str, default='lab_output\slam.txt')
 parser.add_argument("--target_pose", type=str, default='lab_output/targets.txt')
+
 args = parser.parse_args()
 
 
@@ -28,14 +30,17 @@ print(f"fruit output: {target_pose_output}")
 
 
 slam_score = (0.3-slam_output)/(0.3-0.01) * 16 + 4
-target_pose_score = (0.3-slam_output)/(0.3-0.01) * 16 + 4
+target_pose_score = (0.3-target_pose_output)/(0.3-0.01) * 16 + 4
 
 print()
 print(f"map output: {slam_score}")
 print(f"fruit output: {target_pose_score}")
 
 aruco_penalty = 0
-fruit_penalty = 1
+fruit_penalty = 0
 sum = slam_score + target_pose_score +10 +50 - 5*aruco_penalty - fruit_penalty*2
 print(f"final sum: {sum}")
-SLAM_eval_ori.print_map(slam_score, taglist, gt_vec, us_vec_aligned,theta,x,rmse,diff)
+
+taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred = SLAM_eval.generate_map('lab_output/base_map.txt',args.map)
+# taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred = SLAM_eval.generate_map(args.true_map,args.map)
+SLAM_eval.print_map(taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred)

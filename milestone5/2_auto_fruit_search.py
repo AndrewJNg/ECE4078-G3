@@ -161,7 +161,8 @@ class Operate:
         time_remain = time.time() - self.start_time
         if (time.time()-self.last_time)>10:
             self.last_time= time.time()
-            print(f"Current time: {round(time_remain,2)}")
+            print(f"curr_time: {round((time_remain) / 60)} minute {round(time_remain%60)} seconds")
+            # print(f"Current time: {round(time_remain,2)}")
         # time_remain = self.count_down - time.time() + self.start_time
         if time_remain > 0:
             time_remain = f'Count Up: {time_remain:03.0f}s'
@@ -371,7 +372,26 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     ### physical robot: robot would rotate by turn_angle amount
     """
     global baseline
+    if abs(turn_angle) <=np.deg2rad(40): # <=30deg
+        baseline = 15.5e-2
+    elif abs(turn_angle) <=np.deg2rad(50): # ~45deg
+        baseline = 11.2e-2
+    elif abs(turn_angle) <=np.deg2rad(100): # ~90deg
+        baseline = 10.2e-2
+    elif abs(turn_angle) <=np.deg2rad(145): # ~135deg
+        baseline = 10.0e-2
+    else:  # ~180deg
+        baseline = 9.5e-2 
+    # print(f"baseline: {baseline}")
+    
+    # if abs(turn_angle) <=0.8: # <45deg
+    #     baseline = 15.5e-2
+    # elif abs(turn_angle) <=1.6: # ~90deg
+    #     baseline = 11.2e-2
+    # elif abs(turn_angle) <=3.2: # ~180deg
+    #     baseline = 9.0e-2
     '''
+    #base values
     if abs(turn_angle) <=0.8: # <45deg
         baseline = 14.5e-2
     elif abs(turn_angle) <=1.6: # ~90deg
@@ -379,12 +399,6 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     elif abs(turn_angle) <=3.2: # ~180deg
         baseline = 9.0e-2
     '''
-    if abs(turn_angle) <=0.8: # <45deg
-        baseline = 14.5e-2
-    elif abs(turn_angle) <=1.6: # ~90deg
-        baseline = 12.2e-2
-    elif abs(turn_angle) <=3.2: # ~180deg
-        baseline = 9.0e-2
 
     # make robot turn a certain angle
     turn_angle = clamp_angle(turn_angle) # limit angle between -180 to 180 degree (suitable for robot turning)
@@ -398,6 +412,8 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
 
 def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang = 25):
     drive_time = (robot_to_waypoint_distance / (scale * wheel_vel_lin) )
+    # if drive_time >3:
+        # drive_time =3
     # print("Driving for {:.2f} seconds".format(drive_time))
 
     lv,rv = ppi.set_velocity([1, 0], tick=wheel_vel_lin, time=drive_time)
@@ -531,41 +547,68 @@ def localize(increment_angle = 5): # turn and call get_robot_pose
     # print(f"Landmarks: {landmark_counter}")
     return landmark_counter
 
-def generateBaseMap(fname):
+def validify_base_aruco(aruco_id,boundingbox,current_angle,aruco_target_pose):
+    global waypoint_arr
+    
+    if len(aruco_id) ==1:
+        # print(boundingbox[0][0]-320)
+        if(abs(boundingbox[0][0]-320)<160):
+            x,y= take_marker_pose(boundingbox,robot_pose)
+            x = np.around(x,1)
+            y = np.around(y,1)
+            aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
+            print(f"base_aruco: {int(aruco_id[0][0])} at [{x},{y}]")
+            
+            if(current_angle == -90):
+                waypoint_arr.append([x,y+0.4])
+            elif(current_angle == 0):
+                waypoint_arr.append([x-0.4,y])
+            elif(current_angle == 90):
+                waypoint_arr.append([x,y-0.4])
 
+    elif len(aruco_id) >=2:
+        # print(boundingbox)
+        
+        x_values = np.array([item[0] for item in boundingbox])
+        # print(f"aruco_id: {aruco_id} bbox: {boundingbox}, x: {x_values}")
+        offset = abs(320*np.ones_like(x_values) - x_values)
+        # print(f"offset: {offset}")
+        index = np.argmin(offset)
+        # print(f"min: {index}")
+        id = aruco_id[index]
+        # print(f"id: {id}")
+        
+        if(abs(boundingbox[index][0]-320)<160):
+            x,y= take_marker_pose(boundingbox,robot_pose)
+            x = np.around(x,1)
+            y = np.around(y,1)
+            aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
+            print(f"base_aruco: {id} at [{x},{y}]")
+            
+            if(current_angle == -90):
+                waypoint_arr.append([x,y+0.4])
+            elif(current_angle == 0):
+                waypoint_arr.append([x-0.4,y])
+            elif(current_angle == 90):
+                waypoint_arr.append([x,y-0.4])
+
+def generateBaseMap(fname):
     aruco_target_pose = {}
+    increment_angle = 45
+    current_angle = -90
+
     # look right first
     lv,rv=ppi.set_velocity([0, 0], turning_tick=30, time=0.8) # immediate stop with small delay
     drive_meas = measure.Drive(lv,rv,0.8,left_cov=0.00001,right_cov=0.00001)
     ppi.set_servo(angleToPulse(-90*np.pi/180))
     time.sleep(0.3)
+
     # Get picture and estimate marker position
     get_robot_pose(drive_meas,servo_theta=-90*np.pi/180)
     landmarks_combined, current_marker_pose, boundingbox, aruco_id = take_and_analyse_picture()
-    if len(aruco_id) ==1:
-        print(boundingbox[0][0]-320)
-        if(abs(boundingbox[0][0]-320)<160):
-            x,y= take_marker_pose(boundingbox,robot_pose)
-            aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
-    elif len(aruco_id) >=2:
-        print(boundingbox)
-        
-        x_values = np.array([item[0] for item in boundingbox])
-        print(f"aruco_id: {aruco_id} bbox: {boundingbox}, x: {x_values}")
-        offset = abs(320*np.ones_like(x_values) - x_values)
-        print(f"offset: {offset}")
-        index = np.argmin(offset)
-        print(f"min: {index}")
-        id = aruco_id[index]
-        print(f"id: {id}")
-        
-        if(abs(boundingbox[index][0]-320)<160):
-            x,y= take_marker_pose(boundingbox,robot_pose)
-            aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
+    validify_base_aruco(aruco_id,boundingbox,current_angle,aruco_target_pose)
     time.sleep(0.2)
 
-    increment_angle = 45
-    current_angle = -90
     
     for i in range(int(180/increment_angle)):
         current_angle+=increment_angle
@@ -574,36 +617,15 @@ def generateBaseMap(fname):
         _, landmarks = get_robot_pose(drive_meas,servo_theta=increment_angle*np.pi/180)
         # Get picture and estimate marker position
         landmarks_combined, current_marker_pose, boundingbox, aruco_id = take_and_analyse_picture()
-        
-        if len(aruco_id) ==1:
-            print(boundingbox[0][0]-320)
-            if(abs(boundingbox[0][0]-320)<160):
-                x,y= take_marker_pose(boundingbox,robot_pose)
-                aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
-        elif len(aruco_id) >=2:
-            print(boundingbox)
-            
-            x_values = np.array([item[0] for item in boundingbox])
-            print(f"aruco_id: {aruco_id} bbox: {boundingbox}, x: {x_values}")
-            offset = abs(320*np.ones_like(x_values) - x_values)
-            print(f"offset: {offset}")
-            index = np.argmin(offset)
-            print(f"min: {index}")
-            id = aruco_id[index]
-            print(f"id: {id}")
-            
-            if(abs(boundingbox[index][0]-320)<160):
-                x,y= take_marker_pose(boundingbox,robot_pose)
-                aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
-            
-            # x,y= take_marker_pose([boundingbox[index]],robot_pose)
-            # aruco_target_pose[f'aruco{int(id[0])}_0'] ={'x': x,'y': y}
-
+        validify_base_aruco(aruco_id,boundingbox,current_angle,aruco_target_pose)
         time.sleep(0.2)
 
-    # TODO Write to base map file
     with open('lab_output/base_map.txt', 'w') as f:
         json.dump(aruco_target_pose, f, indent=4)
+        
+    print(f"######################################################################")
+    print(f"Base arucos: {aruco_target_pose}")
+    print(f"######################################################################")
 
     # look back at center
     ppi.set_servo(angleToPulse(0*np.pi/180))
@@ -658,6 +680,14 @@ def getMinTurnPath(available_waypoints_with_dist, current_start_pos):
     
     return path, min_turn
 
+def update_true_map():
+    global fruits_list
+    global fruits_true_pos
+    global aruco_true_pos
+    
+    output_path.write_map(ekf)
+    SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
+    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
 ################################################################### Main  ###################################################################
 # main loop
 if __name__ == "__main__":
@@ -719,10 +749,17 @@ if __name__ == "__main__":
     aruco_det = aruco.aruco_detector(robot, marker_length = 0.06)
     ekf = EKF(robot)
     ppi.set_servo(angleToPulse(0*np.pi/180))
+    # while True:
+    #     robot_turn(turn_angle=np.deg2rad(135))
+    #     x = input()
+    #     pass
 ####################################################
     # Generate Aruco base map
-
+    global waypoint_arr 
+    # waypoint_arr = [[-0.8,0]]
+    waypoint_arr = []
     generateBaseMap("lab_output/base_map.txt")
+    search_list = read_search_list()
 
 
 ####################################################
@@ -730,40 +767,26 @@ if __name__ == "__main__":
     output_path.write_map(ekf)
     SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
-    search_list = read_search_list()
-    # print_target_fruits_pos(search_list, fruits_list, fruits_true_pos) # REMOVE
-    # print('Fruit list:\n {}\n'.format(fruits_list))
-    # print('Fruit true pos:\n {}\n'.format(fruits_true_pos))
-    # print('Aruco true pos:\n {}\n'.format(aruco_true_pos))
-    # print('Search list:\n {}\n'.format(search_list))
-
-    
 ########################################   A* CODE INTEGRATED ##################################################
     
-
     #### Start Localizing on Origin ####
-    localize(20)
-    # '''    
+    localize(15)
+    
+    # '''
     # pose_arr = [[-0.8,0], [-1.2,1.2],[1.2,1.2],[1.2,-1.2],[-1.2,-1.2]]
-    # waypoint_arr = [[-0.8,0]]
-    waypoint_arr = [[-0.8,0], [0.8,0]]
+    # waypoint_arr = [[0,0.4],[0,-0.4]]
+    # waypoint_arr = [[-0.8,0], [0.8,0]]
+    print(f"waypoint_arr: {waypoint_arr}")
     for waypoint in waypoint_arr:
         #### Localizing After Fruit Visit ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-        localize(20)
+        localize(15)
         
-
         while current_start_pos != waypoint:
             ## Update ##
             # Update EKF Outputs
-            output_path.write_map(ekf)
-            SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
-            fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
-            search_list = read_search_list()
+            update_true_map()
             # Update path
-
-            # while True:
-                # pass
             if current_start_pos == waypoint:
                 print(f"Error: current pos = waypoint {current_start_pos}")
             path, turns = pathFind.main(current_start_pos, waypoint, fruits_true_pos)
@@ -795,12 +818,17 @@ if __name__ == "__main__":
                 print("Seen 0 landmarks. Localize agian")
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-                localize(20)
+                localize(30)
         print(f"\n### Reached {waypoint} ###\n")
             
     
     output_path.write_map(ekf)
     SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
+    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
+    search_list = read_search_list()
+    # '''
+    
+    
     '''
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
     search_list = read_search_list()
@@ -822,7 +850,7 @@ if __name__ == "__main__":
     for fruit_progress in range(len(search_list)):
         #### Localizing After Fruit Visit ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-        localize(10)
+        localize(30)
         
         while current_start_pos != waypoint:
             ## Update ##
@@ -864,7 +892,7 @@ if __name__ == "__main__":
                 print(f"Seen 0 landmarks during localize ({landmark_counter}). Localize agian")
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-                localize(10)
+                localize(30)
             
         
         output_path.write_map(ekf)
@@ -877,18 +905,20 @@ if __name__ == "__main__":
     sys.exit()
     '''
     # """
-    waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
-    for fruit_progress, available_waypoints_with_dist in enumerate(waypoints_compiled):
+    for fruit_progress in range(len(search_list)):
+        update_true_map()
+
+        waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
+        available_waypoints_with_dist = waypoints_compiled[fruit_progress]
+
         # Get initial path
         path, min_turn = getMinTurnPath(available_waypoints_with_dist, current_start_pos)
         print(f'Initial Path: {path}')
         print(f'Turns for path: {min_turn}')
 
-
         #### Start Localizing on Origin ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
         localize(20)
-
 
         #### Main Algorithm ####
         for i, target_pose in enumerate(path, 3):
@@ -912,25 +942,14 @@ if __name__ == "__main__":
 
             ## Update Positions and Target Waypoints##
             # Get updated fruit pos & obstacle pos
-            output_path.write_map(ekf)
-            SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
-            fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
-            search_list = read_search_list()
+            update_true_map()
             
-            # Get updated waypoints
-            # waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
-            # Get update path
-            # path, min_turn = getMinTurnPath(available_waypoints_with_dist, current_start_pos)
-            # print(f'Path:{path}')
-            # path.pop(0)
-        
-        output_path.write_map(ekf)
-        SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
-    
         print(f"######################################################################")
         print(f"Visited Fruit {fruit_progress+1}")
         print(f"######################################################################")
-        ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
+        # ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
+
+
     pygame.quit()
     sys.exit()
     # """

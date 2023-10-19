@@ -197,13 +197,13 @@ def generate_map(base_file,slam_file):
 
 def print_map(taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred):
     
-    print()
-    print('%s %7s %9s %11s %9s' % ('Marker', 'Real x', 'Pred x', 'Real y', 'Pred y'))
-    print('-----------------------------------------------------------------')
+    # print()
+    # print('%s %7s %9s %11s %9s' % ('Marker', 'Real x', 'Pred x', 'Real y', 'Pred y'))
+    # print('-----------------------------------------------------------------')
     
-    # '''
-    for i in range(len(taglist)):
-        print('%3d %9.2f %9.2f %9.2f %9.2f \n' % (taglist[i], gt_vec[0][i], us_vec_aligned[0][i], gt_vec[1][i], us_vec_aligned[1][i]))
+    # # '''
+    # for i in range(len(taglist)):
+    #     print('%3d %9.2f %9.2f %9.2f %9.2f \n' % (taglist[i], gt_vec[0][i], us_vec_aligned[0][i], gt_vec[1][i], us_vec_aligned[1][i]))
 
 
     ax = plt.gca()
