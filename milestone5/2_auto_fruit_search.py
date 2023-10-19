@@ -372,24 +372,24 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     ### physical robot: robot would rotate by turn_angle amount
     """
     global baseline
-    if abs(turn_angle) <=np.deg2rad(40): # <=30deg
-        baseline = 15.5e-2
-    elif abs(turn_angle) <=np.deg2rad(50): # ~45deg
-        baseline = 11.2e-2
-    elif abs(turn_angle) <=np.deg2rad(100): # ~90deg
-        baseline = 10.2e-2
-    elif abs(turn_angle) <=np.deg2rad(145): # ~135deg
-        baseline = 10.0e-2
-    else:  # ~180deg
-        baseline = 9.5e-2 
+    # if abs(turn_angle) <=np.deg2rad(40): # <=30deg
+    #     baseline = 15.5e-2
+    # elif abs(turn_angle) <=np.deg2rad(50): # ~45deg
+    #     baseline = 11.2e-2
+    # elif abs(turn_angle) <=np.deg2rad(100): # ~90deg
+    #     baseline = 10.2e-2
+    # elif abs(turn_angle) <=np.deg2rad(145): # ~135deg
+    #     baseline = 10.0e-2
+    # else:  # ~180deg
+    #     baseline = 9.5e-2 
     # print(f"baseline: {baseline}")
     
-    # if abs(turn_angle) <=0.8: # <45deg
-    #     baseline = 15.5e-2
-    # elif abs(turn_angle) <=1.6: # ~90deg
-    #     baseline = 11.2e-2
-    # elif abs(turn_angle) <=3.2: # ~180deg
-    #     baseline = 9.0e-2
+    if abs(turn_angle) <=0.8: # <45deg
+        baseline = 15.5e-2
+    elif abs(turn_angle) <=1.6: # ~90deg
+        baseline = 11.2e-2
+    elif abs(turn_angle) <=3.2: # ~180deg
+        baseline = 9.0e-2
     '''
     #base values
     if abs(turn_angle) <=0.8: # <45deg
