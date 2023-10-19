@@ -554,8 +554,8 @@ def validify_base_aruco(aruco_id,boundingbox,current_angle,aruco_target_pose):
         # print(boundingbox[0][0]-320)
         if(abs(boundingbox[0][0]-320)<160):
             x,y= take_marker_pose(boundingbox,robot_pose)
-            x = np.around(x,1)
-            y = np.around(y,1)
+            # x = np.around(x,1)
+            # y = np.around(y,1)
             aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
             print(f"base_aruco: {int(aruco_id[0][0])} at [{x},{y}]")
             
@@ -580,8 +580,8 @@ def validify_base_aruco(aruco_id,boundingbox,current_angle,aruco_target_pose):
         
         if(abs(boundingbox[index][0]-320)<160):
             x,y= take_marker_pose(boundingbox,robot_pose)
-            x = np.around(x,1)
-            y = np.around(y,1)
+            # x = np.around(x,1)
+            # y = np.around(y,1)
             aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
             print(f"base_aruco: {id} at [{x},{y}]")
             
@@ -655,9 +655,16 @@ def getMinTurnPath(available_waypoints_with_dist, current_start_pos):
     temp_paths = [50 for z in range(len(available_waypoints_with_dist))]
     turn_arr = [50 for z in range(len(available_waypoints_with_dist))]
     # Loop through each waypoints
+    print(f"available_waypoints_with_dist {available_waypoints_with_dist}")
     for i, (pose, dist) in enumerate(available_waypoints_with_dist):
-        temp_paths[i], turns = pathFind.main(current_start_pos, pose, fruits_true_pos)
+        temp_path, turns = pathFind.main(current_start_pos, pose, fruits_true_pos)
+        if temp_path == []:
+            print("Path empty")
+            temp_paths[i] = [[]]
+        else: 
+            temp_paths[i] = temp_path
         turn_arr[i] = turns
+        print(" ")
     # Find index of least turn path
     min_turn = 50
     min_turn_dist = 50
@@ -791,10 +798,10 @@ if __name__ == "__main__":
                 print(f"Error: current pos = waypoint {current_start_pos}")
             path, turns = pathFind.main(current_start_pos, waypoint, fruits_true_pos)
             if not path:
-                print("Path empty. Feeding with nearer positions")
-                dist = 0.2
-                available_waypoints_with_dist = [[waypoint[0]+dist, waypoint[1]], [waypoint[0]-dist, waypoint[1]], [waypoint[0], waypoint[1]+dist], [waypoint[0], waypoint[1]-dist]] 
-                path, _ = getMinTurnPath(available_waypoints_with_dist, current_start_pos)
+                print("Path empty :( Me will crash")
+                # dist = 0.2
+                # available_waypoints_with_dist = wp.generateWaypoints() 
+                # path, _ = getMinTurnPath(available_waypoints_with_dist, current_start_pos)
             if current_start_pos == path[0]:
                 path.pop(0)
             target_pose = path[0]
@@ -945,7 +952,7 @@ if __name__ == "__main__":
             update_true_map()
             
         print(f"######################################################################")
-        print(f"Visited Fruit {fruit_progress+1}")
+        print(f"Visited Fruit {fruit_progress+1}: {search_list[fruit_progress]} at {current_start_pos}")
         print(f"######################################################################")
         # ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
 

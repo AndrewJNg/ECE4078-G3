@@ -17,14 +17,14 @@ class calibration:
         self.command = {'motion':[0, 0], 'image': False}
         self.finish = False
 
-    def image_collection(self, dataDir, images_to_collect):
+    def image_collection(self, dataDir):
+        global current_image
+        # image = self.pibot.get_image()
         if self.command['image']:
-            for i in range(images_to_collect):
-                image = self.pibot.get_image()
-                filename = "calib_{}.png".format(i)
-                # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                cv2.imwrite(filename, image)
-            self.finish = True
+            filename = "calib_{}.png".format(current_image)
+            # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            cv2.imwrite(filename, self.img)
+            current_image += 1
 
     def update_keyboard(self):
         for event in pygame.event.get():
@@ -46,6 +46,8 @@ class calibration:
                 self.command['motion'] = [0, 0]
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 self.command['image'] = True
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self.finish = True
 
     def control(self):
         motion_command = self.command['motion']
@@ -58,7 +60,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.47')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.156')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     args, _ = parser.parse_known_args()
 
@@ -67,7 +69,8 @@ if __name__ == "__main__":
     if not os.path.exists(dataDir):
         os.makedirs(dataDir)
     
-    images_to_collect = 1
+    global current_image
+    current_image = 1
 
     calib = calibration(args)
 
@@ -78,14 +81,14 @@ if __name__ == "__main__":
     pygame.display.update()
     
     # collect data
-    print('Collecting {} images for camera calibration.'.format(images_to_collect))
+    # print('Collecting {} images for camera calibration.'.format(images_to_collect))
     print('Press ENTER to capture image.')
     while not calib.finish:
-        
         calib.update_keyboard()
         calib.control()
         calib.take_pic()
-        calib.image_collection(dataDir, images_to_collect)
+        calib.image_collection(dataDir)
+        calib.command['image'] = False
         img_surface = pygame.surfarray.make_surface(calib.img)
         img_surface = pygame.transform.flip(img_surface, True, False)
         img_surface = pygame.transform.rotozoom(img_surface, 90, 1)

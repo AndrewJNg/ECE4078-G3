@@ -378,7 +378,7 @@ def main(START, END, EXTRA):
     end = grid[row][col]
     if end.is_barrier():
         print("Obstacle in waypoint")
-        return [], 100
+        return [[]], 100
     else:
         end.make_end()
 
