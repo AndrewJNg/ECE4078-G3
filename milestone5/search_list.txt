@@ -1,5 +1,3 @@
-orange
-greenapple
-capsicum
 mango
 redapple
+orange

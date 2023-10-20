@@ -372,24 +372,24 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
     ### physical robot: robot would rotate by turn_angle amount
     """
     global baseline
-    # if abs(turn_angle) <=np.deg2rad(40): # <=30deg
-    #     baseline = 15.5e-2
-    # elif abs(turn_angle) <=np.deg2rad(50): # ~45deg
-    #     baseline = 11.2e-2
-    # elif abs(turn_angle) <=np.deg2rad(100): # ~90deg
-    #     baseline = 10.2e-2
-    # elif abs(turn_angle) <=np.deg2rad(145): # ~135deg
-    #     baseline = 10.0e-2
-    # else:  # ~180deg
-    #     baseline = 9.5e-2 
+    if abs(turn_angle) <=np.deg2rad(40): # <=30deg
+        baseline = 15.5e-2
+    elif abs(turn_angle) <=np.deg2rad(50): # ~45deg
+        baseline = 11.2e-2
+    elif abs(turn_angle) <=np.deg2rad(100): # ~90deg
+        baseline = 10.2e-2
+    elif abs(turn_angle) <=np.deg2rad(145): # ~135deg
+        baseline = 9.5e-2
+    else:  # ~180deg
+        baseline = 9.5e-2 
     # print(f"baseline: {baseline}")
     
-    if abs(turn_angle) <=0.8: # <45deg
-        baseline = 15.5e-2
-    elif abs(turn_angle) <=1.6: # ~90deg
-        baseline = 11.2e-2
-    elif abs(turn_angle) <=3.2: # ~180deg
-        baseline = 9.0e-2
+    # if abs(turn_angle) <=0.8: # <45deg
+    #     baseline = 15.5e-2
+    # elif abs(turn_angle) <=1.6: # ~90deg
+    #     baseline = 11.2e-2
+    # elif abs(turn_angle) <=3.2: # ~180deg
+    #     baseline = 9.0e-2
     '''
     #base values
     if abs(turn_angle) <=0.8: # <45deg
@@ -757,7 +757,8 @@ if __name__ == "__main__":
     ekf = EKF(robot)
     ppi.set_servo(angleToPulse(0*np.pi/180))
     # while True:
-    #     robot_turn(turn_angle=np.deg2rad(135))
+    #     # robot_straight(0.8)
+    #     robot_turn(turn_angle=np.deg2rad(180))
     #     x = input()
     #     pass
 ####################################################
@@ -820,12 +821,13 @@ if __name__ == "__main__":
             # Update start pos
             current_start_pos = target_pose
             
-            landmark_counter = localize(30)
+            landmark_counter = localize(15)
+            print("Slam Pose After Localize: ", round(robot_pose[0],2), round(robot_pose[1],2), round(robot_pose[2]*180/np.pi,2))
             if landmark_counter == 0: # If seen markers not more than 2
                 print("Seen 0 landmarks. Localize agian")
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-                localize(30)
+                localize(15)
         print(f"\n### Reached {waypoint} ###\n")
             
     
@@ -925,7 +927,7 @@ if __name__ == "__main__":
 
         #### Start Localizing on Origin ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-        localize(20)
+        localize(15)
 
         #### Main Algorithm ####
         for i, target_pose in enumerate(path, 3):
@@ -944,7 +946,7 @@ if __name__ == "__main__":
                 print(f"Seen 0 landmarks during localize ({landmark_counter}). Localize agian")
                 # Turn 180 deg and localize
                 robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-                localize(20)
+                localize(15)
             print("Pose after localizing",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
 
             ## Update Positions and Target Waypoints##
