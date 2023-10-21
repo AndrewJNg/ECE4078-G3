@@ -1,5 +1,16 @@
-# M4 - Autonomous fruit searching
+# M5 - Autonomous fruit searching
 # New: Update pathfinding
+'''
+Written by:
+    Andrew Joseph Ng Man Loong 
+        - Servo implementation
+        - Neural Network training
+    Liew Hong Jye 
+        - Finding optimum location to stop by fruit  
+        - User interface 
+    Tey Yu Teng 
+        - A star path planning
+''' 
 
 # basic python packages
 import sys, os
@@ -63,75 +74,6 @@ class Operate:
         self.clock.tick(30)
         self.last_time=0
 
-    # wheel control
-    """def control(self):       
-        if args.play_data:
-            lv, rv = self.pibot.set_velocity()            
-        else:
-            lv, rv = self.pibot.set_velocity(
-                self.command['motion'])
-        if not self.data is None:
-            self.data.write_keyboard(lv, rv)
-        dt = time.time() - self.control_clock
-        drive_meas = measure.Drive(lv, rv, dt)
-        self.control_clock = time.time()
-        return drive_meas"""
-    # camera control
-    """def take_pic(self):
-        self.img = self.pibot.get_image()
-        if not self.data is None:
-            self.data.write_image(self.img)"""
-
-    # SLAM with ARUCO markers       
-    """def update_slam(self, drive_meas):
-        lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
-        if self.request_recover_robot:
-            is_success = self.ekf.recover_from_pause(lms)
-            if is_success:
-                self.notification = 'Robot pose is successfuly recovered'
-                self.ekf_on = True
-            else:
-                self.notification = 'Recover failed, need >2 landmarks!'
-                self.ekf_on = False
-            self.request_recover_robot = False
-        elif self.ekf_on: # and not self.debug_flag:
-            self.ekf.predict(drive_meas)
-            self.ekf.add_landmarks(lms)
-            self.ekf.update(lms)"""
-
-    # save images taken by the camera
-    """def save_image(self):
-        f_ = os.path.join(self.folder, f'img_{self.image_id}.png')
-        if self.command['save_image']:
-            image = self.pibot.get_image()
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            cv2.imwrite(f_, image)
-            self.image_id += 1
-            self.command['save_image'] = False
-            self.notification = f'{f_} is saved'"""
-
-    # wheel and camera calibration for SLAM
-    """def init_ekf(self, datadir, ip):
-        fileK = "{}intrinsic.txt".format(datadir)
-        camera_matrix = np.loadtxt(fileK, delimiter=',')
-        fileD = "{}distCoeffs.txt".format(datadir)
-        dist_coeffs = np.loadtxt(fileD, delimiter=',')
-        fileS = "{}scale.txt".format(datadir)
-        scale = np.loadtxt(fileS, delimiter=',')
-        if ip == 'localhost':
-            scale /= 2
-        fileB = "{}baseline.txt".format(datadir)  
-        baseline = np.loadtxt(fileB, delimiter=',')
-        robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
-        return EKF(robot)"""
-
-    # save SLAM map
-    """def record_data(self):
-        if self.command['output']:
-            self.output.write_map(self.ekf)
-            self.notification = 'Map is saved'
-            self.command['output'] = False"""
-
     # paint the GUI            
     def draw(self, canvas):
         canvas.blit(self.bg, (0, 0))
@@ -143,9 +85,15 @@ class Operate:
         ekf_view = ekf.draw_slam_state(res=(320, 480+v_pad),
             not_pause = self.ekf_on)
         canvas.blit(ekf_view, (2*h_pad+320, v_pad))
-        robot_view = cv2.resize(aruco_img, (320, 240))
+        robot_view = cv2.resize(cv2.cvtColor(aruco_img, cv2.COLOR_BGR2RGB), (320, 240))
         self.draw_pygame_window(canvas, robot_view, 
                                 position=(h_pad, v_pad)
+                                )
+        
+        detector_view = cv2.resize(cv2.cvtColor(fruit_img, cv2.COLOR_BGR2RGB),
+                                (320, 240), cv2.INTER_NEAREST)
+        self.draw_pygame_window(canvas, detector_view, 
+                                position=(h_pad, 240+2*v_pad)
                                 )
 
         # canvas.blit(self.gui_mask, (0, 0))
@@ -382,23 +330,6 @@ def robot_turn(turn_angle=0,wheel_vel_lin=30,wheel_vel_ang = 20):
         baseline = 9.5e-2
     else:  # ~180deg
         baseline = 9.5e-2 
-    # print(f"baseline: {baseline}")
-    
-    # if abs(turn_angle) <=0.8: # <45deg
-    #     baseline = 15.5e-2
-    # elif abs(turn_angle) <=1.6: # ~90deg
-    #     baseline = 11.2e-2
-    # elif abs(turn_angle) <=3.2: # ~180deg
-    #     baseline = 9.0e-2
-    '''
-    #base values
-    if abs(turn_angle) <=0.8: # <45deg
-        baseline = 14.5e-2
-    elif abs(turn_angle) <=1.6: # ~90deg
-        baseline = 10.2e-2
-    elif abs(turn_angle) <=3.2: # ~180deg
-        baseline = 9.0e-2
-    '''
 
     # make robot turn a certain angle
     turn_angle = clamp_angle(turn_angle) # limit angle between -180 to 180 degree (suitable for robot turning)
@@ -425,6 +356,7 @@ def robot_straight(robot_to_waypoint_distance=0, wheel_vel_lin=30, wheel_vel_ang
 ################################################################### Pictures and model ###################################################################
 def take_and_analyse_picture():
     global aruco_img
+    global fruit_img
 
     global camera_matrix
     global dist_coeffs
@@ -481,23 +413,8 @@ def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, tr
 
 ################################################################### SLAM - EKF method  ###################################################################
 def get_robot_pose(drive_meas,servo_theta=0):
-####################################################
-    ## method 1: open loop position 
-    '''
-    global waypoint
-    global robot_pose
-    # robot_pose = [0.0,0.0,0.0]
-
-    # obtain angle with respect to x-axis
-    robot_pose[2] = np.arctan2(waypoint[1]-robot_pose[1],waypoint[0]-robot_pose[0])
-    robot_pose[2] = (robot_pose[2] + 2*np.pi) if (robot_pose[2] < 0) else robot_pose[2] # limit from 0 to 360 degree
-
-    robot_pose[0] = waypoint[0]
-    robot_pose[1] = waypoint[1]
-    '''
-####################################################
-    ## method 2: Using SLAM through EKF filtering
-    # '''
+    ## Using SLAM through EKF filtering
+    
     global robot_pose
     global landmarks # NEW Added
     landmarks, marker_pose, boundingbox, aruco_id = take_and_analyse_picture()
@@ -554,8 +471,6 @@ def validify_base_aruco(aruco_id,boundingbox,current_angle,aruco_target_pose):
         # print(boundingbox[0][0]-320)
         if(abs(boundingbox[0][0]-320)<160):
             x,y= take_marker_pose(boundingbox,robot_pose)
-            # x = np.around(x,1)
-            # y = np.around(y,1)
             aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
             print(f"base_aruco: {int(aruco_id[0][0])} at [{x},{y}]")
             
@@ -580,8 +495,6 @@ def validify_base_aruco(aruco_id,boundingbox,current_angle,aruco_target_pose):
         
         if(abs(boundingbox[index][0]-320)<160):
             x,y= take_marker_pose(boundingbox,robot_pose)
-            # x = np.around(x,1)
-            # y = np.around(y,1)
             aruco_target_pose[f'aruco{int(aruco_id[0][0])}_0'] ={'x': x,'y': y}
             print(f"base_aruco: {id} at [{x},{y}]")
             
@@ -704,7 +617,7 @@ if __name__ == "__main__":
     
     parser.add_argument("--base_map", type=str, default='lab_output/base_map.txt')
     parser.add_argument("--map", type=str, default='lab_output\M5_true_map.txt')
-    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.156')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.187')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--yolo", metavar='', type=int, default=0)
     parser.add_argument("--ckpt", metavar='', type=str, default='network/scripts/model/yolov8_model_best.pt')
@@ -743,6 +656,11 @@ if __name__ == "__main__":
     global yolov
     yolov = Detector(args.ckpt)
 
+    global fruit_img
+    fruit_img = np.zeros([240,320,3], dtype=np.uint8)
+    
+    global aruco_img
+    aruco_img = np.zeros([240,320,3], dtype=np.uint8)
 ####################################################
 # Initiate UI
     start = initiate_UI()
@@ -838,81 +756,6 @@ if __name__ == "__main__":
     # '''
     
     
-    '''
-    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
-    search_list = read_search_list()
-
-    #### AUTONOMOUS NAVIGATION ####
-    # Get updated waypoints
-    waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
-    available_waypoints_with_dist = waypoints_compiled[0]
-    # Get updated path
-    path, min_turn = getMinTurnPath(available_waypoints_with_dist, current_start_pos)
-    path.pop(0)
-    target_pose = path[0]
-    # Get updated waypoint
-    waypoint = path[-1]
-    # Print path
-    print(f'Path: {path}')
-    print(f'Turns left: {min_turn}')
-    # waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
-    for fruit_progress in range(len(search_list)):
-        #### Localizing After Fruit Visit ####
-        robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-        localize(30)
-        
-        while current_start_pos != waypoint:
-            ## Update ##
-            # Update EKF Outputs
-            output_path.write_map(ekf)
-            SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
-            fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
-            search_list = read_search_list()
-
-            print("After_slam_coord: ",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
-            # Get updated fruit pos & obstacle pos
-            # Get updated waypoints
-            waypoints_compiled = wp.generateWaypoints(robot_pose, search_list, fruits_list, fruits_true_pos)
-            available_waypoints_with_dist = waypoints_compiled[fruit_progress]
-            # Get updated path
-            path, min_turn = getMinTurnPath(available_waypoints_with_dist, current_start_pos)
-            print(f"Path b4 popping")
-            if current_start_pos == path[0]:
-                path.pop(0)
-            target_pose = path[0]
-            # Get updated waypoint
-            waypoint = path[-1]
-            # Print path
-            print(f'Path: {path}')
-            print(f'Turns left: {min_turn}')
-
-            # Drive to segmented waypoints
-            # operate.draw(canvas)
-            pygame.display.update()
-            print("    ")
-            print("Target: "+str(target_pose))
-            drive_to_point(target_pose)
-            print("Current_coord_pose",robot_pose[0],robot_pose[1],robot_pose[2]*180/np.pi)
-            # Update start pos
-            current_start_pos = target_pose
-            
-            landmark_counter = localize(30)
-            if landmark_counter == 0: # If seen markers not more than 2
-                print(f"Seen 0 landmarks during localize ({landmark_counter}). Localize agian")
-                # Turn 180 deg and localize
-                robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
-                localize(30)
-            
-        
-        output_path.write_map(ekf)
-        
-        print(f"######################################################################")
-        print(f"Visited Fruit {fruit_progress+1}: {search_list[fruit_progress]} at {current_start_pos}")
-        print(f"######################################################################")
-        ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
-    pygame.quit()
-    sys.exit()
-    '''
     # """
     for fruit_progress in range(len(search_list)):
         update_true_map()
@@ -956,9 +799,7 @@ if __name__ == "__main__":
         print(f"######################################################################")
         print(f"Visited Fruit {fruit_progress+1}: {search_list[fruit_progress]} at {current_start_pos}")
         print(f"######################################################################")
-        # ppi.set_velocity([0, 0], turning_tick=0, time=3) # stop with delay
-
+    # """
 
     pygame.quit()
     sys.exit()
-    # """
