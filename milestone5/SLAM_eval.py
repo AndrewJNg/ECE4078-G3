@@ -175,6 +175,19 @@ def generate_map(base_file,slam_file):
     # using one known aruco, and known starting point at (0,0), estimate the transform 
     theta, x = solve_umeyama2d(us_vec, gt_vec)
     us_vec_aligned = apply_transform(theta, x, us_vec)
+    
+    diff = gt_vec - us_vec_aligned
+    rmse = compute_rmse(us_vec, gt_vec)
+    rmse_aligned = compute_rmse(us_vec_aligned, gt_vec)
+    
+    # print()
+    # print(rmse_aligned)
+
+    print()
+    print("Number of found markers: {}".format(len(taglist)))
+    print("RMSE before alignment: {}".format(rmse))
+    print("RMSE after alignment:  {}".format(rmse_aligned))
+
     # print(f"theta: {theta}")
     # print(f"offset: {x}")
 
@@ -183,10 +196,14 @@ def generate_map(base_file,slam_file):
     idx = np.argsort(taglist_pred)
     taglist_pred = np.array(taglist_pred)[idx]
     us_vec_pred = us_vec_pred[:,idx]
-    # print(us_vec)
-    us_vec_aligned_pred = apply_transform(theta, x, us_vec_pred)
-
     
+    # us_vec_aligned_pred = apply_transform(theta, x, us_vec_pred)
+    if (rmse_aligned < rmse):
+        us_vec_aligned_pred = apply_transform(theta, x, us_vec_pred)
+    else: 
+        # do not apply transform if the new rmse value is higher (meaning bad transformation)
+        us_vec_aligned_pred = us_vec_pred
+
     with open('lab_output/M5_true_map.txt', 'w') as f:
         json.dump(convertArrayToMap(taglist_pred,us_vec_aligned_pred), f, indent=4)
 

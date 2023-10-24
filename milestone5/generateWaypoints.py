@@ -171,7 +171,7 @@ def getFromFile(fname):
 # Main function
 def generateWaypoints(robot_pose = [0.,0.,0.], search_list={}, fruits_list={}, fruits_true_pos={}):
     # Define params:
-    dist_to_fruit = 0.2     # distance when robot will take picture from fruit
+    dist_to_fruit = 0.25     # distance when robot will take picture from fruit
 
     debug = 0
     # For debugging, to run independently

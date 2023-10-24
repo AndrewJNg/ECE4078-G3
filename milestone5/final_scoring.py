@@ -41,6 +41,6 @@ fruit_penalty = 0
 sum = slam_score + target_pose_score +10 +50 - 5*aruco_penalty - fruit_penalty*2
 print(f"final sum: {sum}")
 
-taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred = SLAM_eval.generate_map('lab_output/base_map.txt',args.map)
-# taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred = SLAM_eval.generate_map(args.true_map,args.map)
+# taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred = SLAM_eval.generate_map('lab_output/base_map.txt',args.map)
+taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred = SLAM_eval.generate_map(args.true_map,args.map)
 SLAM_eval.print_map(taglist, gt_vec, us_vec_aligned, taglist_pred, us_vec_aligned_pred)

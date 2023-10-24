@@ -178,60 +178,16 @@ def groundtruth_to_grid(x,y,rows): # Convert ground truth coordinate to grid
     col = round(col)
     return row, col
 
-def read_groundtruth(grid,rows):
+def read_groundtruth(grid,rows, CLEARANCE):
     # READ GROUND TRUTH
+    # f = open("M4_true_map.txt", "r")
     f = open("lab_output\M5_true_map.txt", "r")
     data = json.loads(f.read())
     for i in data:
-        [row, col] = groundtruth_to_grid(data[i]['x'], data[i]['y'], rows)
-        try:
-            spot = grid[row][col]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row + 1][col]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row][col + 1]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row - 1][col]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row][col - 1]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row + 1][col + 1]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row + 1][col - 1]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row - 1][col + 1]
-            spot.make_barrier()
-        except:
-            pass
-        try:
-            spot = grid[row - 1][col - 1]
-            spot.make_barrier()
-        except:
-            pass
+        add_obstacle(grid, rows, [data[i]['x'], data[i]['y']], CLEARANCE)
     f.close()
 
-def add_obstacle(grid, rows, coord):
+def add_obstacle(grid, rows, coord, diameter):
     x = coord[0]
     y = coord[1]
     if x < -1.6:
@@ -242,57 +198,23 @@ def add_obstacle(grid, rows, coord):
         y = -1.6
     if y > 1.6:
         y = 1.6
-    [row, col] = groundtruth_to_grid(x, y, rows)
-    try:
-        spot = grid[row][col]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row + 1][col]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row][col + 1]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row - 1][col]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row][col - 1]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row + 1][col + 1]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row + 1][col - 1]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row - 1][col + 1]
-        spot.make_barrier()
-    except:
-        pass
-    try:
-        spot = grid[row - 1][col - 1]
-        spot.make_barrier()
-    except:
-        pass
+
+    if diameter % 2 == 0:
+        diameter = diameter + 1
+    radius = int((diameter - 1)/2)
+    [c_row, c_col] = groundtruth_to_grid(x, y, rows)
+    for i in range(c_row - radius, c_row + radius + 1):
+        for j in range(c_col - radius, c_col + radius + 1):
+            try:
+                spot = grid[i][j]
+                spot.make_barrier()
+            except:
+                pass
     
 def add_boundary(grid, rows):
     for x in range(-16, 17, 1):
         for y in range(-16, 17, 1):
-            if x < -12 or x > 12 or y < -12 or y > 12:
+            if x < -14 or x > 14 or y < -14 or y > 14:
                 [row, col] = groundtruth_to_grid(round(x/10,1),round(y/10,1),rows)
                 spot = grid[row][col]
                 spot.make_barrier()
@@ -344,7 +266,7 @@ def simplify_path(path, threshold):
 # START: list [x1, y1]
 # END: list [x2, y2]
 # EXTRA: nested list [[x, y], [x, y]]
-def main(START, END, EXTRA):
+def main(START, END, EXTRA, CLEARANCE=3):
     ROWS = 33
     width = 40*ROWS
     grid = make_grid(ROWS, width)
@@ -352,13 +274,13 @@ def main(START, END, EXTRA):
     start = None
     end = None
 
-    read_groundtruth(grid, ROWS)
+    read_groundtruth(grid, ROWS, CLEARANCE)
     add_boundary(grid, ROWS)
     
     # CHECK IF ANY EXTRA FRUIT
     if len(EXTRA) != 0:
         for fruit in EXTRA:
-            add_obstacle(grid, ROWS, [fruit[0],fruit[1]])
+            add_obstacle(grid, ROWS, [fruit[0],fruit[1]],diameter=CLEARANCE)
 
     # ADD START POINT
     row, col = groundtruth_to_grid(START[0], START[1], ROWS)

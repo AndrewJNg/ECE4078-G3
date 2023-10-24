@@ -78,7 +78,7 @@ def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
     target_dimensions = [
             [0.074, 0.074, 0.135],  # Red Apple X
             [0.081, 0.081, 0.097],  # Green Apple X
-            [0.075, 0.075, 0.082],  # Orange 
+            [0.075, 0.075, 0.080],  # Orange 
             [0.113, 0.067, 0.062],  # Mango 
             [0.073, 0.067, 0.120],  # Capsicum X
             
@@ -125,6 +125,9 @@ def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
 
         wall_tolerance = 30
         min_fruit_bbox = 20
+        
+        aspect_ratio = box_temp[2]/ box_temp[3] # box_wdith / box_height
+
         # print()
         if(np.floor(x_center-x_offset)<=(0+wall_tolerance) or np.ceil(x_center+x_offset)>=(width-wall_tolerance)):
             # print(f"ignore: {label}, due to hitting the sides")
@@ -135,7 +138,12 @@ def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
         elif (box_temp[2] <=min_fruit_bbox or box_temp[3] <=min_fruit_bbox):
             # print(f"ignore: {label}, due to being too small")
             continue
-
+        elif (aspect_ratio >3):
+            print(f"ignore: {label}, due to aspect ratio being too high {aspect_ratio}")
+            continue
+        elif (aspect_ratio <0.3):
+            print(f"ignore: {label}, due to aspect ratio being too low {aspect_ratio}")
+            continue
         else:
             # continue with finding the landmark
             corners.append([[
@@ -151,7 +159,6 @@ def detect_fruit_landmark(yolov,img,camera_matrix,dist_coeffs):
             # print(f"Fruit id: {ids[0][0]}, with bbox {box_temp}")
 
             marker_height = target_dimensions[int(label)-1][2]
-            aspect_ratio = box_temp[2]/ box_temp[3] # box_wdith / box_height
             marker_length = aspect_ratio * marker_height
             # marker_length = (target_dimensions[int(label)-1][0] + target_dimensions[int(label)-1][1])/2
             landmarks, fruit_img, boundingbox = detect_single_fruit_positions(img=img,corners=corners,ids=ids,marker_length = marker_length ,camera_matrix = camera_matrix,distortion_params=dist_coeffs)

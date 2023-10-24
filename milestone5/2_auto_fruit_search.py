@@ -1,5 +1,4 @@
-# M5 - Autonomous fruit searching
-# New: Update pathfinding
+# Final Demo - Autonomous mapping and fruit searching
 '''
 Written by:
     Andrew Joseph Ng Man Loong 
@@ -57,18 +56,12 @@ class Operate:
                         'save_image': False}
         self.quit = False
         self.pred_fname = ''
-        # self.request_recover_robot = False
         self.file_output = None
         self.ekf_on = True
-        # self.double_reset_comfirm = 0
         self.image_id = 0
         self.notification = 'Press ENTER to start SLAM'
-        # a 5min timer
         self.count_down = 300
         self.start_time = time.time()
-        # self.control_clock = time.time()
-        # initialise images
-        # self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.bg = pygame.image.load('pics/gui_mask.jpg')
         self.clock = pygame.time.Clock()
         self.clock.tick(30)
@@ -113,9 +106,7 @@ class Operate:
             # print(f"Current time: {round(time_remain,2)}")
         # time_remain = self.count_down - time.time() + self.start_time
         if time_remain > 0:
-            time_remain = f'Count Up: {time_remain:03.0f}s'
-        # elif int(time_remain)%2 == 0:
-        #     time_remain = "Time Is Up !!!"
+            time_remain = f"curr_time: {round((time_remain) / 60)} minute {round(time_remain%60)} seconds"
         else:
             time_remain = ""
         count_down_surface = TEXT_FONT.render(time_remain, False, (50, 50, 50))
@@ -131,8 +122,7 @@ class Operate:
     
     @staticmethod
     def put_caption(canvas, caption, position, text_colour=(200, 200, 200)):
-        caption_surface = TITLE_FONT.render(caption,
-                                          False, text_colour)
+        caption_surface = TITLE_FONT.render(caption, False, text_colour)
         canvas.blit(caption_surface, (position[0], position[1]-25))
 
 def initiate_UI():
@@ -376,15 +366,11 @@ def take_and_analyse_picture():
     operate.draw(canvas)
     pygame.display.update()
 
-
     landmarks_combined = []
     landmarks_combined.extend(landmarks_aruco)
     landmarks_combined.extend(landmarks_fruits)
-    
-    # print(f"1_ids : {aruco_id}")
 
     return landmarks_combined, marker_pose, boundingbox, aruco_id
-    # return landmarks, detector_output,aruco_corners
 
 def image_to_camera_coordinates(bounding_box, camera_matrix, rotation_matrix, translation_vector):
     # Define the 2D bounding box points
@@ -423,7 +409,6 @@ def get_robot_pose(drive_meas,servo_theta=0):
     ekf.update(landmarks)
 
     robot_pose = ekf.robot.state.reshape(-1)
-    # print(f"Get Robot pose : [{robot_pose[0]},{robot_pose[1]},{robot_pose[2]*180/np.pi}]")
 
     # visualise
     operate.draw(canvas)
@@ -431,7 +416,8 @@ def get_robot_pose(drive_meas,servo_theta=0):
 
     return robot_pose, landmarks
 
-def localize(increment_angle = 5): # turn and call get_robot_pose
+ # turn and call get_robot_pose
+def localize(increment_angle = 5):
     global robot_pose
     global landmarks
     
@@ -621,9 +607,9 @@ if __name__ == "__main__":
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--yolo", metavar='', type=int, default=0)
     parser.add_argument("--ckpt", metavar='', type=str, default='network/scripts/model/yolov8_model_best.pt')
+    # parser.add_argument("--ckpt", metavar='', type=str, default='network/scripts/model/yolov8_model_best_V2.pt')
     args, _ = parser.parse_known_args()
     
-
     # robot startup with given variables
     ppi = Alphabot(args.ip,args.port)
     
@@ -690,19 +676,18 @@ if __name__ == "__main__":
 
 ####################################################
     ## Set up all EKF using given values in true map
-    output_path.write_map(ekf)
-    SLAM_eval.generate_map(base_file=args.base_map,slam_file='lab_output/slam.txt')
-    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
+    update_true_map()
 ########################################   A* CODE INTEGRATED ##################################################
     
     #### Start Localizing on Origin ####
-    localize(15)
     
     # '''
     # pose_arr = [[-0.8,0], [-1.2,1.2],[1.2,1.2],[1.2,-1.2],[-1.2,-1.2]]
     # waypoint_arr = [[0,0.4],[0,-0.4]]
     # waypoint_arr = [[-0.8,0], [0.8,0]]
     print(f"waypoint_arr: {waypoint_arr}")
+    
+    localize(15)
     for waypoint in waypoint_arr:
         #### Localizing After Fruit Visit ####
         robot_turn(turn_angle=180*np.pi/180,wheel_vel_lin=30,wheel_vel_ang = 20)
@@ -754,7 +739,8 @@ if __name__ == "__main__":
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
     search_list = read_search_list()
     # '''
-    
+    #####################################################################################
+    ## Travelling to each fruit
     
     # """
     for fruit_progress in range(len(search_list)):
